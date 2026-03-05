@@ -1,0 +1,2981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <title>智能资产配置器 Pro Max</title>
+    <style>
+        /* 完整样式（与之前一致，确保所有UI元素正常显示） */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.1);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .stat-trend {
+            font-size: 0.875rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .trend-up {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .trend-down {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 4px;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input[type="number"], input[type="date"], input[type="text"], select, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.6);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .config-item {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .config-item:hover {
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .config-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .config-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .config-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .config-detail {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .config-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .weight-input {
+            width: 80px !important;
+            padding: 8px 12px !important;
+            text-align: center;
+            font-size: 1rem !important;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--glass);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .toggle {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            background: var(--border);
+            border-radius: 14px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .toggle.active {
+            background: var(--primary);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle.active::after {
+            left: 27px;
+        }
+
+        .toggle-label {
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .history-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .history-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 16px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+        }
+
+        .history-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-main {
+            flex: 1;
+        }
+
+        .history-date {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .history-tag {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .history-tag.rebalance {
+            background: var(--warning);
+        }
+
+        .history-detail {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .history-amount {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-right: 16px;
+        }
+
+        .history-amount.sell {
+            color: var(--danger);
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .icon-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .rebalance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .rebalance-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rebalance-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--border);
+        }
+
+        .rebalance-card.buy::before { background: var(--success); }
+        .rebalance-card.sell::before { background: var(--danger); }
+        .rebalance-card.hold::before { background: var(--warning); }
+
+        .rebalance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .rebalance-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .rebalance-action {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+
+        .rebalance-action.buy {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .rebalance-action.sell {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .rebalance-action.hold {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .rebalance-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            margin: 12px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rebalance-progress {
+            height: 100%;
+            border-radius: 4px;
+            transition: all 0.5s ease;
+        }
+
+        .rebalance-progress.current {
+            background: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .rebalance-progress.target {
+            background: var(--primary);
+            position: absolute;
+            top: 0;
+        }
+
+        .rebalance-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .rebalance-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 8px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .notification.success .notification-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .notification.error .notification-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .notification.info .notification-icon { background: rgba(6, 182, 212, 0.1); color: var(--info); }
+
+        .quick-actions {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 15px 40px -10px rgba(99, 102, 241, 0.7);
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            padding-left: 48px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .tag-primary {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .preset-card {
+            background: var(--glass);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .preset-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .preset-card.active {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .preset-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .preset-name {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .preset-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--glass);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 24px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 2px solid var(--bg);
+        }
+
+        .timeline-date {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .timeline-content {
+            font-weight: 600;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+        }
+
+        .analysis-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .analysis-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .metric-value.positive { color: var(--success); }
+        .metric-value.negative { color: var(--danger); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .draft-item {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .draft-info {
+            flex: 1;
+        }
+
+        .draft-date {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .draft-preview {
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .history-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .history-actions {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .rebalance-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .config-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .config-input {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>智能资产配置器 Pro Max</h1>
+            <p class="subtitle">专业级投资组合管理与再平衡工具</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">📊 仪表盘</div>
+            <div class="tab" onclick="switchTab('invest')">💰 新增投资</div>
+            <div class="tab" onclick="switchTab('rebalance')">⚖️ 再平衡</div>
+            <div class="tab" onclick="switchTab('analysis')">📈 分析</div>
+            <div class="tab" onclick="switchTab('history')">📜 历史记录</div>
+            <div class="tab" onclick="switchTab('settings')">⚙️ 配置</div>
+        </div>
+
+        <!-- 仪表盘 -->
+        <div id="dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">💵</div>
+                        <div class="stat-trend trend-up" id="assetsTrend">+0%</div>
+                    </div>
+                    <div class="stat-value" id="totalAssets">¥0</div>
+                    <div class="stat-label">总资产净值</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">📥</div>
+                        <div class="stat-trend trend-up" id="investTrend">+0</div>
+                    </div>
+                    <div class="stat-value" id="totalInvested">¥0</div>
+                    <div class="stat-label">累计投入</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-trend trend-up" id="returnTrend">+0%</div>
+                    </div>
+                    <div class="stat-value" id="totalReturn">¥0</div>
+                    <div class="stat-label">累计收益</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-trend trend-up" id="driftTrend">正常</div>
+                    </div>
+                    <div class="stat-value" id="driftStatus">0%</div>
+                    <div class="stat-label">最大偏离度</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">资产配置现状</div>
+                    <button class="btn btn-secondary btn-small" onclick="refreshDashboard()">🔄 刷新</button>
+                </div>
+                <div id="portfolioChart">
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div>暂无数据，请先添加投资记录</div>
+                        <button class="btn btn-primary btn-small" onclick="switchTab('invest')" style="margin-top: 16px;">去投资</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="todoCard" style="display: none;">
+                <div class="card-title">⚠️ 待办事项</div>
+                <div id="todoList" style="margin-top: 16px;"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📅 最近活动</div>
+                <div class="timeline" id="recentTimeline" style="margin-top: 20px;">
+                    <div class="empty-state" style="padding: 40px 0;">
+                        <div class="empty-icon">📅</div>
+                        <div>暂无最近活动</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 投资页面 -->
+        <div id="invest" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">新增投资计划</div>
+                    <button class="btn btn-secondary btn-small" onclick="showDrafts()">📋 草稿箱</button>
+                </div>
+                
+                <div class="input-group">
+                    <label>投资日期 *</label>
+                    <input type="date" id="investDate" required>
+                </div>
+                
+                <div class="input-group">
+                    <label>投资金额 (元) *</label>
+                    <input type="number" id="investAmount" placeholder="例如：10000" min="0" step="0.01" required>
+                    <div class="input-hint">建议定期定额投资，分散时间风险</div>
+                </div>
+
+                <div class="input-group">
+                    <label>备注（可选）</label>
+                    <input type="text" id="investNote" placeholder="例如：2024年3月定投、年终奖投入等">
+                </div>
+
+                <div class="toggle-container" onclick="toggleCustomWeight('invest')">
+                    <div class="toggle" id="investCustomToggle"></div>
+                    <span class="toggle-label">使用自定义权重配置（临时调整，不影响默认设置）</span>
+                </div>
+
+                <div id="investWeightPanel" style="display: none;">
+                    <div class="card" style="background: var(--glass); margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div class="section-title" style="margin: 0;">权重配置</div>
+                            <button class="btn btn-secondary btn-small" onclick="resetInvestWeights()">重置</button>
+                        </div>
+                        <div id="investWeightList"></div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-weight: 700;">
+                            <span>总权重</span>
+                            <span id="investWeightTotal" style="color: var(--danger);">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="calculateInvestment()" id="calcInvestBtn">🧮 计算配置方案</button>
+                    <button class="btn btn-secondary" onclick="saveAsDraft()">💾 保存为草稿</button>
+                </div>
+
+                <div id="investResult" style="display: none; margin-top: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-title" style="margin: 0;">分配方案预览</div>
+                        <button class="btn btn-secondary btn-small" onclick="exportPlan('invest')">📤 导出方案</button>
+                    </div>
+                    <div id="investAllocationGrid" class="rebalance-grid"></div>
+                    
+                    <div style="margin-top: 24px; padding: 20px; background: var(--glass); border-radius: 12px; border-left: 4px solid var(--info);">
+                        <div style="font-weight: 600; margin-bottom: 8px;">💡 投资提示</div>
+                        <div id="investTips" style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;"></div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="confirmInvestment()" id="confirmInvestBtn" style="margin-top: 24px; width: 100%;">
+                        ✓ 确认执行并记录
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 再平衡页面 -->
+        <div id="rebalance" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">组合再平衡</div>
+                </div>
+
+                <div class="input-group">
+                    <label>计算日期 *</label>
+                    <input type="date" id="rebalanceDate" required>
+                </div>
+
+                <div class="section-title" style="margin: 24px 0 16px;">当前持仓市值（元）</div>
+                <div id="rebalanceHoldings"></div>
+
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn btn-secondary btn-small" onclick="loadLastHoldings()">📥 载入上次持仓</button>
+                    <button class="btn btn-secondary btn-small" onclick="clearHoldings()">🗑 清空</button>
+                </div>
+
+                <div class="toggle-container" onclick="toggleCustomWeight('rebalance')">
+                    <div class="toggle" id="rebalanceCustomToggle"></div>
+                    <span class="toggle-label">使用自定义目标权重（临时调整）</span>
+                </div>
+
+                <div id="rebalanceWeightPanel" style="display: none;">
+                    <div class="card" style="background: var(--glass); margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div class="section-title" style="margin: 0;">目标权重配置</div>
+                            <button class="btn btn-secondary btn-small" onclick="resetRebalanceWeights()">重置</button>
+                        </div>
+                        <div id="rebalanceWeightList"></div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-weight: 700;">
+                            <span>总权重</span>
+                            <span id="rebalanceWeightTotal" style="color: var(--danger);">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="calculateRebalance()" id="calcRebalanceBtn" style="width: 100%;">⚖️ 生成再平衡方案</button>
+
+                <div id="rebalanceResult" style="display: none; margin-top: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <div class="section-title" style="margin: 0;">调仓建议</div>
+                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                            预计交易费用: <span id="estimatedFee" style="color: var(--text); font-weight: 600;">¥0</span>
+                        </div>
+                    </div>
+                    <div id="rebalanceCards" class="rebalance-grid"></div>
+                    
+                    <div style="margin-top: 24px; padding: 20px; background: var(--glass); border-radius: 12px; border-left: 4px solid var(--info);">
+                        <div style="font-weight: 600; margin-bottom: 8px;">💡 操作建议</div>
+                        <div id="rebalanceAdvice" style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;"></div>
+                    </div>
+
+                    <div class="btn-group" style="margin-top: 24px;">
+                        <button class="btn btn-primary" onclick="confirmRebalance()" id="confirmRebalanceBtn" style="flex: 1;">✓ 确认并记录</button>
+                        <button class="btn btn-secondary" onclick="exportPlan('rebalance')">📤 导出方案</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析页面 -->
+        <div id="analysis" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">投资组合深度分析</div>
+                    <select id="analysisPeriod" onchange="updateAnalysis()" style="width: auto; padding: 8px 16px; font-size: 0.875rem; background: var(--glass); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+                        <option value="all">📅 全部时间</option>
+                        <option value="year">📆 本年度</option>
+                        <option value="quarter">📊 本季度</option>
+                        <option value="month">📈 本月</option>
+                    </select>
+                </div>
+                <div id="analysisContent">
+                    <div class="empty-state">
+                        <div class="empty-icon">📈</div>
+                        <div>数据不足，无法生成分析报告<br><small style="color: var(--text-muted);">请至少完成一次投资和再平衡操作</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史记录页面 -->
+        <div id="history" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">操作历史</div>
+                    <div class="history-filters">
+                        <button class="filter-btn active" onclick="filterHistory('all', this)">全部</button>
+                        <button class="filter-btn" onclick="filterHistory('invest', this)">投资</button>
+                        <button class="filter-btn" onclick="filterHistory('rebalance', this)">再平衡</button>
+                    </div>
+                </div>
+
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="historySearch" placeholder="搜索历史记录（日期、金额、备注）..." onkeyup="searchHistory()">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-small" onclick="exportHistory()">📤 导出历史</button>
+                    <button class="btn btn-secondary btn-small" onclick="showStats()">📊 统计图表</button>
+                </div>
+
+                <div id="historyList" class="history-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📜</div>
+                        <div>暂无历史记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置页面 -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎯 资产配置方案管理</div>
+                </div>
+
+                <div class="preset-grid" style="margin-bottom: 32px;">
+                    <div class="preset-card active" onclick="loadPreset('default', this)">🌍<br><span class="preset-name">全球平衡</span><span class="preset-desc">美股40% 亚太35% 其他25%</span></div>
+                    <div class="preset-card" onclick="loadPreset('conservative', this)">🛡️<br><span class="preset-name">保守稳健</span><span class="preset-desc">债券40% 宽基40% 其他20%</span></div>
+                    <div class="preset-card" onclick="loadPreset('aggressive', this)">🚀<br><span class="preset-name">积极进取</span><span class="preset-desc">美股60% 新兴市场30% 其他10%</span></div>
+                    <div class="preset-card" onclick="loadPreset('equal', this)">⚖️<br><span class="preset-name">等权重</span><span class="preset-desc">8标的各12.5%</span></div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                    <input type="text" id="newSchemeName" placeholder="新方案名称..." style="flex: 1; min-width: 200px;">
+                    <button class="btn btn-primary btn-small" onclick="saveAsNewScheme()">💾 保存为新方案</button>
+                </div>
+
+                <div id="savedSchemes" style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;"></div>
+
+                <div class="section-title" style="margin-bottom: 16px;">自定义配置</div>
+                <div id="settingsWeightList"></div>
+
+                <div style="margin-top: 24px; padding: 16px; background: var(--glass); border-radius: 12px; border-left: 4px solid var(--warning);">
+                    <div style="font-weight: 600; margin-bottom: 4px;">⚠️ 提示</div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted);">权重总和必须严格等于100%，否则无法保存</div>
+                </div>
+
+                <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="saveSettings()">✓ 保存为默认配置</button>
+                    <button class="btn btn-secondary" onclick="exportSettings()">📤 导出配置</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📥 导入配置</button>
+                    <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importSettings(this)">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">⚙️ 应用设置</div>
+                
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">再平衡阈值</div>
+                        <div class="config-detail">当某个标的偏离度超过此值时提醒再平衡（默认5%）</div>
+                    </div>
+                    <div class="config-input">
+                        <input type="number" id="rebalanceThreshold" value="5" min="1" max="50" step="0.5" class="weight-input">
+                        <span>%</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">交易费用率</div>
+                        <div class="config-detail">计算再平衡成本时使用（默认0.1%）</div>
+                    </div>
+                    <div class="config-input">
+                        <input type="number" id="feeRate" value="0.1" min="0" max="5" step="0.01" class="weight-input">
+                        <span>%</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">自动备份</div>
+                        <div class="config-detail">每次操作后自动导出数据到JSON文件</div>
+                    </div>
+                    <div class="config-input">
+                        <div class="toggle active" id="autoBackupToggle" onclick="toggleAutoBackup()"></div>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">数据管理</div>
+                        <div class="config-detail">导出所有数据或清空数据库</div>
+                    </div>
+                    <div class="config-input">
+                        <button class="btn btn-secondary btn-small" onclick="exportAllData()">📤 导出全部数据</button>
+                        <button class="btn btn-danger btn-small" onclick="clearAllData()" style="margin-left: 8px;">🗑 清空数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 草稿箱模态框 -->
+    <div id="draftModal" class="modal-overlay" onclick="if(event.target === this) closeDraftModal()">
+        <div class="modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h3 style="font-size: 1.5rem; font-weight: 700;">📋 草稿箱</h3>
+                <button onclick="closeDraftModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="draftList"></div>
+        </div>
+    </div>
+
+    <!-- 快速操作按钮 -->
+    <div class="quick-actions">
+        <button class="fab" onclick="quickInvest()" title="快速投资 (Ctrl+I)">+</button>
+    </div>
+
+    <!-- 通知 -->
+    <div id="notification" class="notification">
+        <div class="notification-icon" id="notifIcon">✓</div>
+        <div>
+            <div style="font-weight: 700;" id="notifTitle">成功</div>
+            <div style="font-size: 0.875rem; color: var(--text-muted);" id="notifMsg">操作已完成</div>
+        </div>
+    </div>
+
+    <script>
+        // 数据定义
+        const ASSETS = {
+            '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
+            '纳斯达克100': { code: 'QQQ', color: '#8b5cf6', region: 'US', desc: '美国科技股' },
+            '日经225': { code: 'EWJ', color: '#ec4899', region: 'APAC', desc: '日本股市' },
+            '德国DAX': { code: 'EWG', color: '#f43f5e', region: 'EU', desc: '德国股市' },
+            '印度Nifty50': { code: 'INDA', color: '#f59e0b', region: 'APAC', desc: '印度股市' },
+            '越南VNIndex': { code: 'VNM', color: '#10b981', region: 'APAC', desc: '越南股市' },
+            'REITs': { code: 'VNQ', color: '#3b82f6', region: 'US', desc: '房地产信托' },
+            '中债备用': { code: 'CHBond', color: '#64748b', region: 'CN', desc: '中国债券' }
+        };
+
+        const PRESETS = {
+            default: { '标普500': 0.25, '纳斯达克100': 0.15, '日经225': 0.15, '德国DAX': 0.15, '印度Nifty50': 0.10, '越南VNIndex': 0.05, 'REITs': 0.10, '中债备用': 0.05 },
+            conservative: { '标普500': 0.15, '纳斯达克100': 0.10, '日经225': 0.10, '德国DAX': 0.10, '印度Nifty50': 0.05, '越南VNIndex': 0.05, 'REITs': 0.15, '中债备用': 0.30 },
+            aggressive: { '标普500': 0.35, '纳斯达克100': 0.25, '日经225': 0.10, '德国DAX': 0.05, '印度Nifty50': 0.10, '越南VNIndex': 0.10, 'REITs': 0.05, '中债备用': 0.00 },
+            equal: { '标普500': 0.125, '纳斯达克100': 0.125, '日经225': 0.125, '德国DAX': 0.125, '印度Nifty50': 0.125, '越南VNIndex': 0.125, 'REITs': 0.125, '中债备用': 0.125 }
+        };
+
+        let currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
+        let tempInvestWeights = null;
+        let tempRebalanceWeights = null;
+        let db = null;
+        let lastInvestPlan = null;
+        let lastRebalancePlan = null;
+        let currentHistoryFilter = 'all';
+        let allHistoryData = [];
+
+        // 初始化（关键修复：等待数据库打开后再执行依赖 db 的函数）
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('investDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('rebalanceDate').value = new Date().toISOString().split('T')[0];
+            
+            // 加载本地存储的配置（不依赖 IndexedDB）
+            const saved = localStorage.getItem('portfolioConfig');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    currentWeights = config.weights || currentWeights;
+                    if (config.threshold) document.getElementById('rebalanceThreshold').value = config.threshold;
+                    if (config.feeRate) document.getElementById('feeRate').value = config.feeRate;
+                } catch (e) {
+                    console.error('Failed to load config:', e);
+                }
+            }
+            
+            try {
+                // 等待 IndexedDB 初始化完成
+                await initDB();
+                console.log('IndexedDB ready, initializing app...');
+                
+                // 现在可以安全调用依赖 db 的函数
+                initWeightEditors();
+                loadSavedSchemes();
+                updateDashboard();
+                showNotif('success', '✓ 应用已就绪', '数据加载完成');
+            } catch (e) {
+                console.error('Failed to initialize:', e);
+                showNotif('error', '✗ 初始化失败', '请检查浏览器是否支持IndexedDB');
+            }
+        });
+
+        // IndexedDB 初始化（返回 Promise）
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('PortfolioDB', 1);
+                
+                request.onerror = () => {
+                    console.error('IndexedDB open error:', request.error);
+                    reject(request.error);
+                };
+                
+                request.onsuccess = () => {
+                    db = request.result;
+                    console.log('IndexedDB initialized successfully');
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    console.log('IndexedDB upgrade needed');
+                    const db = e.target.result;
+                    
+                    if (!db.objectStoreNames.contains('investments')) {
+                        db.createObjectStore('investments', {keyPath: 'id', autoIncrement: true});
+                        console.log('Created investments store');
+                    }
+                    if (!db.objectStoreNames.contains('rebalances')) {
+                        db.createObjectStore('rebalances', {keyPath: 'id', autoIncrement: true});
+                        console.log('Created rebalances store');
+                    }
+                    if (!db.objectStoreNames.contains('drafts')) {
+                        db.createObjectStore('drafts', {keyPath: 'id', autoIncrement: true});
+                        console.log('Created drafts store');
+                    }
+                    if (!db.objectStoreNames.contains('schemes')) {
+                        db.createObjectStore('schemes', {keyPath: 'name'});
+                        console.log('Created schemes store');
+                    }
+                };
+            });
+        }
+
+        // 确保数据库就绪的辅助函数
+        function checkDb() {
+            if (!db) {
+                showNotif('error', '数据库未就绪', '请刷新页面重试');
+                return false;
+            }
+            return true;
+        }
+
+        // 标签切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            const tabs = document.querySelectorAll('.tab');
+            const index = ['dashboard', 'invest', 'rebalance', 'analysis', 'history', 'settings'].indexOf(tab);
+            if (index >= 0) tabs[index].classList.add('active');
+            
+            document.getElementById(tab).classList.add('active');
+            
+            if (tab === 'dashboard') updateDashboard();
+            if (tab === 'history') loadHistory();
+            if (tab === 'analysis') updateAnalysis();
+            if (tab === 'rebalance') initRebalanceInputs();
+            if (tab === 'settings') {
+                initWeightEditors();
+                loadSavedSchemes();
+            }
+        }
+
+        function quickInvest() {
+            switchTab('invest');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+            document.getElementById('investAmount').focus();
+        }
+
+        // 初始化权重编辑器
+        function initWeightEditors() {
+            createWeightList('settings', currentWeights);
+            createWeightList('invest', tempInvestWeights || currentWeights);
+            createWeightList('rebalance', tempRebalanceWeights || currentWeights);
+            updateWeightTotal('settings');
+        }
+
+        function createWeightList(prefix, weights) {
+            const container = document.getElementById(`${prefix}WeightList`);
+            if (!container) return;
+            container.innerHTML = '';
+            
+            Object.entries(ASSETS).forEach(([name, info]) => {
+                const item = document.createElement('div');
+                item.className = 'config-item';
+                item.innerHTML = `
+                    <div class="config-info">
+                        <div class="config-color" style="background: ${info.color}"></div>
+                        <div>
+                            <div class="config-name">${name} <span style="color: var(--text-muted); font-size: 0.875rem; font-weight: 400;">(${info.code})</span></div>
+                            <div class="config-detail">${info.desc} · ${getRegionName(info.region)}</div>
+                        </div>
+                    </div>
+                    <div class="config-input">
+                        <input type="number" 
+                               class="weight-input" 
+                               value="${(weights[name] * 100).toFixed(1)}" 
+                               step="0.1" 
+                               min="0" 
+                               max="100"
+                               onchange="handleWeightChange('${prefix}', '${name}', this.value)"
+                               id="${prefix}Weight_${name}">
+                        <span style="color: var(--text-muted);">%</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function handleWeightChange(prefix, name, value) {
+            const num = parseFloat(value) || 0;
+            const weight = num / 100;
+            
+            if (prefix === 'settings') {
+                currentWeights[name] = weight;
+                updateWeightTotal('settings');
+            } else if (prefix === 'invest') {
+                if (!tempInvestWeights) tempInvestWeights = JSON.parse(JSON.stringify(currentWeights));
+                tempInvestWeights[name] = weight;
+                updateWeightTotal('invest');
+            } else if (prefix === 'rebalance') {
+                if (!tempRebalanceWeights) tempRebalanceWeights = JSON.parse(JSON.stringify(currentWeights));
+                tempRebalanceWeights[name] = weight;
+                updateWeightTotal('rebalance');
+            }
+        }
+
+        function updateWeightTotal(prefix) {
+            const weights = prefix === 'settings' ? currentWeights : 
+                           prefix === 'invest' ? (tempInvestWeights || currentWeights) : 
+                           (tempRebalanceWeights || currentWeights);
+            const total = Object.values(weights).reduce((a, b) => a + b, 0);
+            const el = document.getElementById(`${prefix}WeightTotal`);
+            if (el) {
+                el.textContent = (total * 100).toFixed(1) + '%';
+                el.style.color = Math.abs(total - 1) < 0.001 ? 'var(--success)' : 'var(--danger)';
+            }
+            return total;
+        }
+
+        function getRegionName(code) {
+            const map = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
+            return map[code] || code;
+        }
+
+        // 切换自定义权重
+        function toggleCustomWeight(type) {
+            const toggle = document.getElementById(`${type}CustomToggle`);
+            const panel = document.getElementById(`${type}WeightPanel`);
+            
+            if (toggle.classList.contains('active')) {
+                toggle.classList.remove('active');
+                panel.style.display = 'none';
+                if (type === 'invest') tempInvestWeights = null;
+                if (type === 'rebalance') tempRebalanceWeights = null;
+            } else {
+                toggle.classList.add('active');
+                panel.style.display = 'block';
+                if (type === 'invest') {
+                    tempInvestWeights = JSON.parse(JSON.stringify(currentWeights));
+                    createWeightList('invest', tempInvestWeights);
+                    updateWeightTotal('invest');
+                }
+                if (type === 'rebalance') {
+                    tempRebalanceWeights = JSON.parse(JSON.stringify(currentWeights));
+                    createWeightList('rebalance', tempRebalanceWeights);
+                    updateWeightTotal('rebalance');
+                }
+            }
+        }
+
+        function resetInvestWeights() {
+            tempInvestWeights = JSON.parse(JSON.stringify(currentWeights));
+            createWeightList('invest', tempInvestWeights);
+            updateWeightTotal('invest');
+        }
+
+        function resetRebalanceWeights() {
+            tempRebalanceWeights = JSON.parse(JSON.stringify(currentWeights));
+            createWeightList('rebalance', tempRebalanceWeights);
+            updateWeightTotal('rebalance');
+        }
+
+        // 预设方案
+        function loadPreset(name, element) {
+            currentWeights = JSON.parse(JSON.stringify(PRESETS[name]));
+            createWeightList('settings', currentWeights);
+            updateWeightTotal('settings');
+            
+            document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+            element.classList.add('active');
+            showNotif('success', '✓ 预设已加载', `已应用"${name}"配置方案`);
+        }
+
+        // 保存方案
+        function saveAsNewScheme() {
+            if (!checkDb()) return;
+            const name = document.getElementById('newSchemeName').value.trim();
+            if (!name) {
+                showNotif('error', '✗ 错误', '请输入方案名称');
+                return;
+            }
+            
+            const total = updateWeightTotal('settings');
+            if (Math.abs(total - 1) > 0.001) {
+                showNotif('error', '✗ 权重错误', `当前总和为${(total*100).toFixed(1)}%，必须等于100%`);
+                return;
+            }
+            
+            const tx = db.transaction(['schemes'], 'readwrite');
+            const store = tx.objectStore('schemes');
+            
+            const request = store.put({
+                name: name,
+                weights: JSON.parse(JSON.stringify(currentWeights)),
+                createdAt: new Date().toISOString()
+            });
+            
+            request.onsuccess = () => {
+                document.getElementById('newSchemeName').value = '';
+                loadSavedSchemes();
+                showNotif('success', '✓ 已保存', `方案"${name}"已保存`);
+            };
+            
+            request.onerror = () => {
+                showNotif('error', '✗ 保存失败', '请重试');
+            };
+        }
+
+        // 加载保存的方案
+        function loadSavedSchemes() {
+            if (!checkDb()) return;
+            const tx = db.transaction(['schemes'], 'readonly');
+            const store = tx.objectStore('schemes');
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const schemes = request.result;
+                const container = document.getElementById('savedSchemes');
+                
+                if (schemes.length === 0) {
+                    container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.875rem;">暂无自定义方案</span>';
+                    return;
+                }
+                
+                container.innerHTML = schemes.map(s => `
+                    <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(6, 182, 212, 0.1); border: 1px solid var(--info); border-radius: 20px; color: var(--info); font-size: 0.875rem; font-weight: 600;">
+                        <span style="cursor: pointer;" onclick="applyScheme('${s.name}')">${s.name}</span>
+                        <span style="cursor: pointer; opacity: 0.6; font-weight: 700;" onclick="deleteScheme('${s.name}')">×</span>
+                    </div>
+                `).join('');
+            };
+        }
+
+        function applyScheme(name) {
+            if (!checkDb()) return;
+            const tx = db.transaction(['schemes'], 'readonly');
+            const store = tx.objectStore('schemes');
+            const request = store.get(name);
+            
+            request.onsuccess = () => {
+                const scheme = request.result;
+                if (scheme) {
+                    currentWeights = JSON.parse(JSON.stringify(scheme.weights));
+                    createWeightList('settings', currentWeights);
+                    updateWeightTotal('settings');
+                    showNotif('success', '✓ 已应用', `已切换至"${name}"方案`);
+                }
+            };
+        }
+
+        function deleteScheme(name) {
+            if (!checkDb()) return;
+            if (!confirm(`确定删除方案"${name}"？`)) return;
+            
+            const tx = db.transaction(['schemes'], 'readwrite');
+            const store = tx.objectStore('schemes');
+            const request = store.delete(name);
+            
+            request.onsuccess = () => {
+                loadSavedSchemes();
+            };
+        }
+
+        function saveSettings() {
+            const total = updateWeightTotal('settings');
+            if (Math.abs(total - 1) > 0.001) {
+                showNotif('error', '✗ 无法保存', '权重总和必须等于100%');
+                return;
+            }
+            
+            const config = {
+                weights: currentWeights,
+                threshold: parseFloat(document.getElementById('rebalanceThreshold').value),
+                feeRate: parseFloat(document.getElementById('feeRate').value),
+                autoBackup: document.getElementById('autoBackupToggle').classList.contains('active')
+            };
+            
+            localStorage.setItem('portfolioConfig', JSON.stringify(config));
+            showNotif('success', '✓ 配置已保存', '默认配置已更新');
+        }
+
+        // 投资功能
+        function calculateInvestment() {
+            const amount = parseFloat(document.getElementById('investAmount').value);
+            const date = document.getElementById('investDate').value;
+            const note = document.getElementById('investNote').value;
+            
+            if (!amount || amount <= 0 || !date) {
+                showNotif('error', '✗ 输入错误', '请填写有效的日期和金额');
+                return;
+            }
+            
+            const useCustom = document.getElementById('investCustomToggle').classList.contains('active');
+            const weights = useCustom && tempInvestWeights ? tempInvestWeights : currentWeights;
+            const total = Object.values(weights).reduce((a, b) => a + b, 0);
+            
+            if (Math.abs(total - 1) > 0.001) {
+                showNotif('error', '✗ 配置错误', `权重总和为${(total*100).toFixed(1)}%，必须等于100%`);
+                return;
+            }
+            
+            const allocations = {};
+            const grid = document.getElementById('investAllocationGrid');
+            grid.innerHTML = '';
+
+            Object.entries(weights).forEach(([name, weight]) => {
+                const alloc = amount * weight;
+                allocations[name] = alloc;
+                
+                const card = document.createElement('div');
+                card.className = 'rebalance-card';
+                card.innerHTML = `
+                    <div class="rebalance-header">
+                        <div class="rebalance-name">${name}</div>
+                        <div class="rebalance-action buy">买入</div>
+                    </div>
+                    <div class="rebalance-value">¥${alloc.toFixed(2)}</div>
+                    <div class="rebalance-bar">
+                        <div class="rebalance-progress target animate-fill" style="width: ${weight * 100}%; background: ${ASSETS[name].color}"></div>
+                    </div>
+                    <div class="rebalance-stats">
+                        <span>权重 ${(weight * 100).toFixed(1)}%</span>
+                        <span>${ASSETS[name].code}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            const tips = generateInvestTips(weights, amount);
+            document.getElementById('investTips').innerHTML = tips;
+            
+            lastInvestPlan = {
+                date: date,
+                amount: amount,
+                allocations: allocations,
+                weights: JSON.parse(JSON.stringify(weights)),
+                note: note,
+                isCustom: useCustom,
+                timestamp: Date.now()
+            };
+            
+            document.getElementById('investResult').style.display = 'block';
+            document.getElementById('investResult').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function generateInvestTips(weights, amount) {
+            const regions = {};
+            Object.entries(weights).forEach(([name, w]) => {
+                const region = ASSETS[name].region;
+                regions[region] = (regions[region] || 0) + w;
+            });
+            
+            let html = '<div style="margin-bottom: 8px;"><strong>地域分布：</strong>';
+            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
+            html += Object.entries(regions).map(([r, p]) => `${regionNames[r]} ${(p*100).toFixed(0)}%`).join(' · ');
+            html += '</div>';
+            
+            const topHolding = Object.entries(weights).sort((a,b) => b[1]-a[1])[0];
+            html += `<div>最大持仓：<strong>${topHolding[0]}</strong> ${(topHolding[1]*100).toFixed(1)}% · 建议单笔至少投入<strong>¥1000</strong>以降低交易成本占比</div>`;
+            
+            return html;
+        }
+
+        // 确认投资
+        function confirmInvestment() {
+            if (!lastInvestPlan) {
+                showNotif('error', '✗ 错误', '请先计算投资方案');
+                return;
+            }
+            if (!checkDb()) return;
+            
+            const btn = document.getElementById('confirmInvestBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 保存中...';
+            
+            try {
+                const tx = db.transaction(['investments'], 'readwrite');
+                const store = tx.objectStore('investments');
+                
+                const request = store.add(lastInvestPlan);
+                
+                request.onsuccess = () => {
+                    if (document.getElementById('autoBackupToggle').classList.contains('active')) {
+                        autoExport();
+                    }
+                    
+                    showNotif('success', '✓ 投资已记录', `成功记录 ${lastInvestPlan.date} 的投资 ¥${lastInvestPlan.amount.toFixed(2)}`);
+                    
+                    document.getElementById('investAmount').value = '';
+                    document.getElementById('investNote').value = '';
+                    document.getElementById('investResult').style.display = 'none';
+                    document.getElementById('investCustomToggle').classList.remove('active');
+                    document.getElementById('investWeightPanel').style.display = 'none';
+                    tempInvestWeights = null;
+                    lastInvestPlan = null;
+                    
+                    updateDashboard();
+                };
+                
+                request.onerror = (e) => {
+                    console.error('Failed to save investment:', e);
+                    showNotif('error', '✗ 保存失败', '无法保存到数据库，请检查浏览器存储权限');
+                };
+                
+                tx.oncomplete = () => {
+                    btn.disabled = false;
+                    btn.innerHTML = '✓ 确认执行并记录';
+                };
+                
+                tx.onerror = (e) => {
+                    console.error('Transaction error:', e);
+                    btn.disabled = false;
+                    btn.innerHTML = '✓ 确认执行并记录';
+                };
+                
+            } catch (error) {
+                console.error('Error in confirmInvestment:', error);
+                showNotif('error', '✗ 系统错误', error.message);
+                btn.disabled = false;
+                btn.innerHTML = '✓ 确认执行并记录';
+            }
+        }
+
+        // 草稿功能
+        function saveAsDraft() {
+            if (!checkDb()) return;
+            const amount = document.getElementById('investAmount').value;
+            const date = document.getElementById('investDate').value;
+            const note = document.getElementById('investNote').value;
+            
+            if (!amount && !note) {
+                showNotif('error', '✗ 空草稿', '请至少填写金额或备注');
+                return;
+            }
+            
+            const draft = {
+                date: date,
+                amount: parseFloat(amount) || 0,
+                note: note,
+                weights: tempInvestWeights || currentWeights,
+                savedAt: Date.now()
+            };
+            
+            const tx = db.transaction(['drafts'], 'readwrite');
+            const store = tx.objectStore('drafts');
+            const request = store.add(draft);
+            
+            request.onsuccess = () => {
+                showNotif('info', '💾 已保存草稿', '可在草稿箱中查看');
+            };
+            
+            request.onerror = () => {
+                showNotif('error', '✗ 保存失败', '请重试');
+            };
+        }
+
+        function showDrafts() {
+            if (!checkDb()) return;
+            const tx = db.transaction(['drafts'], 'readonly');
+            const store = tx.objectStore('drafts');
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const drafts = request.result;
+                const modal = document.getElementById('draftModal');
+                const list = document.getElementById('draftList');
+                
+                if (drafts.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div>暂无草稿</div>';
+                } else {
+                    list.innerHTML = drafts.sort((a,b) => b.savedAt - a.savedAt).map(d => `
+                        <div class="draft-item">
+                            <div class="draft-info">
+                                <div class="draft-date">${new Date(d.savedAt).toLocaleString()} · ${d.date || '未设定日期'}</div>
+                                <div class="draft-preview">
+                                    ${d.amount > 0 ? `¥${d.amount.toFixed(2)}` : '未设定金额'} 
+                                    ${d.note ? '· ' + d.note : ''}
+                                    ${JSON.stringify(d.weights) !== JSON.stringify(currentWeights) ? '· ⚙️ 自定义权重' : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary btn-small" onclick="loadDraft(${d.id})">载入</button>
+                                <button class="icon-btn" onclick="deleteDraft(${d.id})">🗑</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                modal.classList.add('active');
+            };
+        }
+
+        function closeDraftModal() {
+            document.getElementById('draftModal').classList.remove('active');
+        }
+
+        function loadDraft(id) {
+            if (!checkDb()) return;
+            const tx = db.transaction(['drafts'], 'readonly');
+            const store = tx.objectStore('drafts');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const draft = request.result;
+                if (!draft) return;
+                
+                document.getElementById('investDate').value = draft.date || new Date().toISOString().split('T')[0];
+                document.getElementById('investAmount').value = draft.amount || '';
+                document.getElementById('investNote').value = draft.note || '';
+                
+                if (draft.weights && JSON.stringify(draft.weights) !== JSON.stringify(currentWeights)) {
+                    tempInvestWeights = JSON.parse(JSON.stringify(draft.weights));
+                    document.getElementById('investCustomToggle').classList.add('active');
+                    document.getElementById('investWeightPanel').style.display = 'block';
+                    createWeightList('invest', tempInvestWeights);
+                    updateWeightTotal('invest');
+                }
+                
+                closeDraftModal();
+                showNotif('success', '✓ 草稿已载入', '请检查并确认投资信息');
+            };
+        }
+
+        function deleteDraft(id) {
+            if (!checkDb()) return;
+            const tx = db.transaction(['drafts'], 'readwrite');
+            const store = tx.objectStore('drafts');
+            const request = store.delete(id);
+            
+            request.onsuccess = () => {
+                showDrafts();
+            };
+        }
+
+        // 再平衡功能
+        function initRebalanceInputs() {
+            const container = document.getElementById('rebalanceHoldings');
+            container.innerHTML = '';
+            
+            Object.entries(ASSETS).forEach(([name, info]) => {
+                const div = document.createElement('div');
+                div.className = 'input-group';
+                div.style.marginBottom = '12px';
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: ${info.color};"></div>
+                        ${name} (${info.code})
+                        <span style="color: var(--text-muted); font-weight: 400; margin-left: auto;">${info.desc}</span>
+                    </label>
+                    <input type="number" id="holding_${name}" placeholder="0.00" step="0.01" min="0" style="padding: 12px 16px; font-size: 1rem;">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function clearHoldings() {
+            Object.keys(ASSETS).forEach(name => {
+                const input = document.getElementById(`holding_${name}`);
+                if (input) input.value = '';
+            });
+            showNotif('info', '✓ 已清空', '所有持仓数据已重置');
+        }
+
+        function loadLastHoldings() {
+            if (!checkDb()) return;
+            const tx = db.transaction(['rebalances'], 'readonly');
+            const store = tx.objectStore('rebalances');
+            const request = store.openCursor(null, 'prev');
+            
+            request.onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (!cursor) {
+                    showNotif('error', '✗ 无数据', '没有找到历史持仓记录');
+                    return;
+                }
+                
+                const last = cursor.value;
+                Object.entries(last.currentHoldings || {}).forEach(([name, value]) => {
+                    const input = document.getElementById(`holding_${name}`);
+                    if (input) input.value = value.toFixed(2);
+                });
+                
+                showNotif('success', '✓ 已载入', `已载入 ${last.date} 的持仓数据`);
+            };
+        }
+
+        function calculateRebalance() {
+            const holdings = {};
+            let totalValue = 0;
+            
+            Object.keys(ASSETS).forEach(name => {
+                const val = parseFloat(document.getElementById(`holding_${name}`).value) || 0;
+                holdings[name] = val;
+                totalValue += val;
+            });
+            
+            if (totalValue === 0) {
+                showNotif('error', '✗ 输入错误', '请至少输入一项持仓市值');
+                return;
+            }
+            
+            const useCustom = document.getElementById('rebalanceCustomToggle').classList.contains('active');
+            const targetWeights = useCustom && tempRebalanceWeights ? tempRebalanceWeights : currentWeights;
+            const totalWeight = Object.values(targetWeights).reduce((a,b) => a+b, 0);
+            
+            if (Math.abs(totalWeight - 1) > 0.001) {
+                showNotif('error', '✗ 配置错误', '目标权重总和必须等于100%');
+                return;
+            }
+            
+            const feeRate = parseFloat(document.getElementById('feeRate').value) / 100 || 0.001;
+            const adjustments = [];
+            const cards = document.getElementById('rebalanceCards');
+            cards.innerHTML = '';
+            
+            let maxDrift = 0;
+            let totalTradeAmount = 0;
+            let buyCount = 0;
+            let sellCount = 0;
+            
+            Object.entries(targetWeights).forEach(([name, targetWeight]) => {
+                const current = holdings[name] || 0;
+                const currentWeight = current / totalValue;
+                const target = totalValue * targetWeight;
+                const diff = target - current;
+                const drift = Math.abs(currentWeight - targetWeight);
+                maxDrift = Math.max(maxDrift, drift);
+                
+                let action = 'hold';
+                let actionText = '持有';
+                let actionClass = 'hold';
+                
+                if (diff > 1) {
+                    action = 'buy';
+                    actionText = `买入 ¥${diff.toFixed(2)}`;
+                    actionClass = 'buy';
+                    totalTradeAmount += diff;
+                    buyCount++;
+                } else if (diff < -1) {
+                    action = 'sell';
+                    actionText = `卖出 ¥${Math.abs(diff).toFixed(2)}`;
+                    actionClass = 'sell';
+                    totalTradeAmount += Math.abs(diff);
+                    sellCount++;
+                }
+                
+                adjustments.push({
+                    name,
+                    current,
+                    target,
+                    diff,
+                    action,
+                    drift,
+                    currentWeight,
+                    targetWeight
+                });
+                
+                const card = document.createElement('div');
+                card.className = `rebalance-card ${actionClass}`;
+                card.innerHTML = `
+                    <div class="rebalance-header">
+                        <div class="rebalance-name">${name}</div>
+                        <div class="rebalance-action ${actionClass}">${actionText}</div>
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 4px;">
+                            <span style="color: var(--text-muted);">当前: ¥${current.toFixed(2)} (${(currentWeight*100).toFixed(1)}%)</span>
+                            <span style="color: var(--primary);">目标: ${(targetWeight*100).toFixed(1)}%</span>
+                        </div>
+                        <div class="rebalance-bar">
+                            <div class="rebalance-progress current" style="width: ${Math.min(currentWeight * 100, 100)}%"></div>
+                            <div class="rebalance-progress target" style="width: ${Math.min(targetWeight * 100, 100)}%; opacity: 0.7; background: ${ASSETS[name].color}"></div>
+                        </div>
+                    </div>
+                    <div class="rebalance-stats">
+                        <span>偏离度: ${(drift*100).toFixed(2)}%</span>
+                        <span>${drift > 0.05 ? '⚠️ 需调整' : '✓ 正常'}</span>
+                    </div>
+                `;
+                cards.appendChild(card);
+            });
+            
+            const estimatedFee = totalTradeAmount * feeRate;
+            document.getElementById('estimatedFee').textContent = `¥${estimatedFee.toFixed(2)}`;
+            
+            const threshold = parseFloat(document.getElementById('rebalanceThreshold').value) / 100 || 0.05;
+            let advice = '';
+            
+            if (maxDrift < threshold) {
+                advice = `<div style="margin-bottom: 12px;"><strong>✓ 组合健康</strong></div>`;
+                advice += `当前最大偏离度为${(maxDrift*100).toFixed(1)}%，低于设定阈值${(threshold*100).toFixed(1)}%，建议继续持有，无需调整。`;
+            } else {
+                advice = `<div style="margin-bottom: 12px;"><strong>⚠️ 建议再平衡</strong></div>`;
+                advice += `最大偏离度达${(maxDrift*100).toFixed(1)}%，超过阈值。`;
+                if (sellCount > 0) advice += `<div style="margin-top: 8px;">🔴 卖出：${sellCount}个标的，回笼资金用于补仓</div>`;
+                if (buyCount > 0) advice += `<div style="margin-top: 8px;">🟢 买入：${buyCount}个标的，建议优先加仓偏离度大的标的</div>`;
+                advice += `<div style="margin-top: 8px; color: var(--text-muted);">预估交易成本：¥${estimatedFee.toFixed(2)}（费率${(feeRate*100).toFixed(2)}%）</div>`;
+            }
+            
+            document.getElementById('rebalanceAdvice').innerHTML = advice;
+            
+            lastRebalancePlan = {
+                date: document.getElementById('rebalanceDate').value,
+                totalValue: totalValue,
+                currentHoldings: holdings,
+                adjustments: adjustments,
+                targetWeights: JSON.parse(JSON.stringify(targetWeights)),
+                maxDrift: maxDrift,
+                isCustom: useCustom,
+                estimatedFee: estimatedFee,
+                timestamp: Date.now()
+            };
+            
+            document.getElementById('rebalanceResult').style.display = 'block';
+            document.getElementById('rebalanceResult').scrollIntoView({behavior: 'smooth'});
+        }
+
+        // 确认再平衡
+        function confirmRebalance() {
+            if (!lastRebalancePlan) {
+                showNotif('error', '✗ 错误', '请先计算再平衡方案');
+                return;
+            }
+            if (!checkDb()) return;
+            
+            const btn = document.getElementById('confirmRebalanceBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 保存中...';
+            
+            try {
+                const tx = db.transaction(['rebalances'], 'readwrite');
+                const store = tx.objectStore('rebalances');
+                
+                const request = store.add(lastRebalancePlan);
+                
+                request.onsuccess = () => {
+                    if (document.getElementById('autoBackupToggle').classList.contains('active')) {
+                        autoExport();
+                    }
+                    
+                    showNotif('success', '✓ 再平衡已记录', `已保存${lastRebalancePlan.date}的调仓方案`);
+                    
+                    document.getElementById('rebalanceResult').style.display = 'none';
+                    document.getElementById('rebalanceCustomToggle').classList.remove('active');
+                    document.getElementById('rebalanceWeightPanel').style.display = 'none';
+                    tempRebalanceWeights = null;
+                    lastRebalancePlan = null;
+                    
+                    clearHoldings();
+                    updateDashboard();
+                };
+                
+                request.onerror = () => {
+                    showNotif('error', '✗ 保存失败', '请重试');
+                };
+                
+                tx.oncomplete = () => {
+                    btn.disabled = false;
+                    btn.innerHTML = '✓ 确认并记录';
+                };
+                
+                tx.onerror = () => {
+                    btn.disabled = false;
+                    btn.innerHTML = '✓ 确认并记录';
+                };
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotif('error', '✗ 系统错误', error.message);
+                btn.disabled = false;
+                btn.innerHTML = '✓ 确认并记录';
+            }
+        }
+
+        // 仪表盘更新
+        function updateDashboard() {
+            if (!db) {
+                console.log('DB not ready yet');
+                return;
+            }
+            
+            const tx1 = db.transaction(['investments'], 'readonly');
+            const invStore = tx1.objectStore('investments');
+            const invReq = invStore.getAll();
+            
+            invReq.onsuccess = () => {
+                const investments = invReq.result;
+                
+                const tx2 = db.transaction(['rebalances'], 'readonly');
+                const rebStore = tx2.objectStore('rebalances');
+                const rebReq = rebStore.getAll();
+                
+                rebReq.onsuccess = () => {
+                    const rebalances = rebReq.result;
+                    renderDashboard(investments, rebalances);
+                };
+            };
+        }
+
+        function renderDashboard(investments, rebalances) {
+            if (investments.length === 0 && rebalances.length === 0) {
+                document.getElementById('portfolioChart').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div>暂无数据，请先添加投资记录</div>
+                        <button class="btn btn-primary btn-small" onclick="switchTab('invest')" style="margin-top: 16px;">去投资</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
+            document.getElementById('totalInvested').textContent = `¥${(totalInvested/10000).toFixed(2)}万`;
+            
+            let currentHoldings = {};
+            const lastRebalance = rebalances.sort((a,b) => b.timestamp - a.timestamp)[0];
+            
+            if (lastRebalance) {
+                currentHoldings = JSON.parse(JSON.stringify(lastRebalance.currentHoldings));
+                lastRebalance.adjustments.forEach(adj => {
+                    if (adj.action === 'buy') currentHoldings[adj.name] = (currentHoldings[adj.name] || 0) + Math.abs(adj.diff);
+                    if (adj.action === 'sell') currentHoldings[adj.name] = Math.max(0, (currentHoldings[adj.name] || 0) - Math.abs(adj.diff));
+                });
+            }
+            
+            const afterLastRebalance = lastRebalance ? 
+                investments.filter(i => i.timestamp > lastRebalance.timestamp) : 
+                investments;
+            
+            afterLastRebalance.forEach(inv => {
+                Object.entries(inv.allocations).forEach(([name, amount]) => {
+                    currentHoldings[name] = (currentHoldings[name] || 0) + amount;
+                });
+            });
+            
+            const totalAssets = Object.values(currentHoldings).reduce((a,b) => a+b, 0);
+            document.getElementById('totalAssets').textContent = `¥${(totalAssets/10000).toFixed(2)}万`;
+            
+            const returns = totalAssets - totalInvested;
+            const returnEl = document.getElementById('totalReturn');
+            returnEl.textContent = `${returns >= 0 ? '+' : ''}¥${Math.abs(returns/10000).toFixed(2)}万`;
+            returnEl.style.color = returns >= 0 ? 'var(--success)' : 'var(--danger)';
+            
+            let maxDrift = 0;
+            if (totalAssets > 0) {
+                Object.entries(currentWeights).forEach(([name, target]) => {
+                    const current = (currentHoldings[name] || 0) / totalAssets;
+                    maxDrift = Math.max(maxDrift, Math.abs(current - target));
+                });
+            }
+            
+            const driftEl = document.getElementById('driftStatus');
+            driftEl.textContent = `${(maxDrift * 100).toFixed(1)}%`;
+            const threshold = parseFloat(document.getElementById('rebalanceThreshold').value) / 100 || 0.05;
+            
+            if (maxDrift > threshold) {
+                driftEl.style.color = 'var(--danger)';
+                document.getElementById('driftTrend').textContent = '需调整';
+                document.getElementById('driftTrend').className = 'stat-trend trend-down';
+                
+                document.getElementById('todoCard').style.display = 'block';
+                document.getElementById('todoList').innerHTML = `
+                    <div style="padding: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border-left: 4px solid var(--warning);">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--warning);">⚠️ 再平衡提醒</div>
+                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 12px;">
+                            您的组合偏离度已达${(maxDrift*100).toFixed(1)}%，超过设定阈值${(threshold*100).toFixed(1)}%
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="switchTab('rebalance')">去再平衡</button>
+                    </div>
+                `;
+            } else {
+                driftEl.style.color = 'var(--success)';
+                document.getElementById('driftTrend').textContent = '正常';
+                document.getElementById('driftTrend').className = 'stat-trend trend-up';
+                document.getElementById('todoCard').style.display = 'none';
+            }
+            
+            renderPortfolioChart(currentHoldings, totalAssets);
+            renderRecentActivity(investments, rebalances);
+        }
+
+        function renderPortfolioChart(holdings, total) {
+            const container = document.getElementById('portfolioChart');
+            if (total === 0) return;
+            
+            const byRegion = {};
+            const byAsset = {};
+            
+            Object.entries(holdings).forEach(([name, value]) => {
+                const region = ASSETS[name].region;
+                byRegion[region] = (byRegion[region] || 0) + value;
+                byAsset[name] = value;
+            });
+            
+            const regionNames = {US: '美国市场', EU: '欧洲市场', APAC: '亚太市场', CN: '中国市场'};
+            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981'};
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">';
+            
+            html += '<div><div style="font-weight: 600; margin-bottom: 16px; color: var(--text-muted); font-size: 0.875rem;">地域分布</div>';
+            Object.entries(byRegion).sort((a,b) => b[1]-a[1]).forEach(([region, value]) => {
+                const percent = (value / total * 100).toFixed(1);
+                html += `
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-weight: 500;">${regionNames[region]}</span>
+                            <span style="font-weight: 700; color: ${regionColors[region]}">${percent}%</span>
+                        </div>
+                        <div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: ${percent}%; background: ${regionColors[region]}; border-radius: 4px; transition: width 1s ease;"></div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">¥${value.toFixed(2)}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            html += '<div><div style="font-weight: 600; margin-bottom: 16px; color: var(--text-muted); font-size: 0.875rem;">标的详情</div><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">';
+            Object.entries(byAsset).sort((a,b) => b[1]-a[1]).forEach(([name, value]) => {
+                const percent = (value / total * 100).toFixed(1);
+                const target = currentWeights[name] * 100;
+                const diff = (percent - target).toFixed(1);
+                html += `
+                    <div style="background: var(--glass); padding: 12px; border-radius: 8px; border-left: 3px solid ${ASSETS[name].color};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-weight: 600; font-size: 0.875rem;">${name}</span>
+                            <span style="font-size: 0.75rem; color: ${Math.abs(diff) > 5 ? 'var(--warning)' : 'var(--text-muted)'}">${diff > 0 ? '+' : ''}${diff}%</span>
+                        </div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 2px;">${percent}%</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">¥${value.toFixed(0)}</div>
+                    </div>
+                `;
+            });
+            html += '</div></div></div>';
+            
+            container.innerHTML = html;
+        }
+
+        function renderRecentActivity(investments, rebalances) {
+            const container = document.getElementById('recentTimeline');
+            const all = [
+                ...investments.map(i => ({...i, type: 'invest', title: '新增投资', icon: '💰'})),
+                ...rebalances.map(r => ({...r, type: 'rebalance', title: '组合再平衡', icon: '⚖️'}))
+            ].sort((a,b) => b.timestamp - a.timestamp).slice(0, 5);
+            
+            if (all.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 40px 0;"><div class="empty-icon">📅</div>暂无最近活动</div>';
+                return;
+            }
+            
+            container.innerHTML = all.map(item => `
+                <div class="timeline-item">
+                    <div class="timeline-date">${new Date(item.timestamp).toLocaleString()}</div>
+                    <div class="timeline-content">
+                        <span style="margin-right: 8px;">${item.icon}</span>
+                        ${item.title} · 
+                        ${item.type === 'invest' ? 
+                            `¥${item.amount.toFixed(2)} ${item.note ? '(' + item.note + ')' : ''}` : 
+                            `总资产¥${item.totalValue.toFixed(2)} · 偏离度${(item.maxDrift*100).toFixed(1)}%`
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function refreshDashboard() {
+            updateDashboard();
+            showNotif('success', '✓ 已刷新', '仪表盘数据已更新');
+        }
+
+        // 分析功能
+        function updateAnalysis() {
+            if (!checkDb()) return;
+            const period = document.getElementById('analysisPeriod').value;
+            
+            const tx1 = db.transaction(['investments'], 'readonly');
+            const invStore = tx1.objectStore('investments');
+            const invReq = invStore.getAll();
+            
+            invReq.onsuccess = () => {
+                const investments = invReq.result;
+                
+                const tx2 = db.transaction(['rebalances'], 'readonly');
+                const rebStore = tx2.objectStore('rebalances');
+                const rebReq = rebStore.getAll();
+                
+                rebReq.onsuccess = () => {
+                    const rebalances = rebReq.result;
+                    renderAnalysis(investments, rebalances, period);
+                };
+            };
+        }
+
+        function renderAnalysis(investments, rebalances, period) {
+            if (investments.length === 0) {
+                document.getElementById('analysisContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📈</div>
+                        <div>数据不足，无法生成分析报告</div>
+                        <small style="color: var(--text-muted); display: block; margin-top: 8px;">请至少完成一次投资操作</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            const now = Date.now();
+            const filters = {
+                month: 30 * 24 * 60 * 60 * 1000,
+                quarter: 90 * 24 * 60 * 60 * 1000,
+                year: 365 * 24 * 60 * 60 * 1000
+            };
+            
+            const filteredInv = period === 'all' ? investments : 
+                investments.filter(i => now - i.timestamp < filters[period]);
+            
+            const totalInvested = filteredInv.reduce((sum, i) => sum + i.amount, 0);
+            const avgInvest = filteredInv.length > 0 ? totalInvested / filteredInv.length : 0;
+            const investFreq = filteredInv.length > 1 ? 
+                (filteredInv[filteredInv.length-1].timestamp - filteredInv[0].timestamp) / (filteredInv.length - 1) / (24*60*60*1000) : 0;
+            
+            const rebalanceCount = rebalances.length;
+            const avgDrift = rebalances.length > 0 ? 
+                rebalances.reduce((sum, r) => sum + r.maxDrift, 0) / rebalances.length : 0;
+            
+            document.getElementById('analysisContent').innerHTML = `
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <div class="analysis-title">📊 投资行为分析</div>
+                        <div class="metric-row">
+                            <span class="metric-label">投资次数</span>
+                            <span class="metric-value">${filteredInv.length}次</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">累计投入</span>
+                            <span class="metric-value">¥${totalInvested.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">平均单笔</span>
+                            <span class="metric-value">¥${avgInvest.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">投资频率</span>
+                            <span class="metric-value">${investFreq > 0 ? `每${investFreq.toFixed(0)}天` : 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">⚖️ 再平衡分析</div>
+                        <div class="metric-row">
+                            <span class="metric-label">再平衡次数</span>
+                            <span class="metric-value">${rebalanceCount}次</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">平均偏离度</span>
+                            <span class="metric-value">${(avgDrift*100).toFixed(2)}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">纪律性评分</span>
+                            <span class="metric-value ${rebalanceCount >= filteredInv.length/3 ? 'positive' : 'negative'}">
+                                ${rebalanceCount >= filteredInv.length/3 ? '优秀' : '需加强'}
+                            </span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">最近操作</span>
+                            <span class="metric-value">${rebalances.length > 0 ? new Date(rebalances[rebalances.length-1].timestamp).toLocaleDateString() : '无'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">🌍 地域配置分析</div>
+                        <div id="regionAnalysis"></div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">📈 时间分布</div>
+                        <div id="timeAnalysis"></div>
+                    </div>
+                </div>
+            `;
+            
+            const regionInvest = {US: 0, EU: 0, APAC: 0, CN: 0};
+            filteredInv.forEach(inv => {
+                Object.entries(inv.allocations).forEach(([name, amount]) => {
+                    const region = ASSETS[name].region;
+                    regionInvest[region] += amount;
+                });
+            });
+            
+            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
+            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981'};
+            
+            document.getElementById('regionAnalysis').innerHTML = Object.entries(regionInvest)
+                .filter(([_,v]) => v > 0)
+                .sort((a,b) => b[1]-a[1])
+                .map(([region, amount]) => `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: ${regionColors[region]}; font-weight: 600;">${regionNames[region]}</span>
+                            <span>¥${amount.toFixed(0)}</span>
+                        </div>
+                        <div style="height: 6px; background: var(--border); border-radius: 3px;">
+                            <div style="height: 100%; width: ${Math.min(amount/totalInvested*100*2, 100)}%; background: ${regionColors[region]}; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                `).join('');
+            
+            const byMonth = {};
+            filteredInv.forEach(inv => {
+                const month = new Date(inv.timestamp).toLocaleString('zh-CN', {year: 'numeric', month: 'short'});
+                byMonth[month] = (byMonth[month] || 0) + inv.amount;
+            });
+            
+            document.getElementById('timeAnalysis').innerHTML = Object.entries(byMonth)
+                .slice(-6)
+                .map(([month, amount]) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);">
+                        <span style="color: var(--text-muted);">${month}</span>
+                        <span style="font-weight: 600;">¥${amount.toFixed(0)}</span>
+                    </div>
+                `).join('');
+        }
+
+        // 历史记录
+        function loadHistory() {
+            if (!checkDb()) return;
+            const tx1 = db.transaction(['investments'], 'readonly');
+            const invStore = tx1.objectStore('investments');
+            const invReq = invStore.getAll();
+            
+            invReq.onsuccess = () => {
+                const investments = invReq.result;
+                
+                const tx2 = db.transaction(['rebalances'], 'readonly');
+                const rebStore = tx2.objectStore('rebalances');
+                const rebReq = rebStore.getAll();
+                
+                rebReq.onsuccess = () => {
+                    const rebalances = rebReq.result;
+                    
+                    allHistoryData = [
+                        ...investments.map(i => ({...i, type: 'invest', displayDate: i.date})),
+                        ...rebalances.map(r => ({...r, type: 'rebalance', displayDate: r.date}))
+                    ].sort((a,b) => b.timestamp - a.timestamp);
+                    
+                    renderHistoryList(allHistoryData);
+                };
+            };
+        }
+
+        function renderHistoryList(data) {
+            const container = document.getElementById('historyList');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📜</div>暂无历史记录</div>';
+                return;
+            }
+            
+            container.innerHTML = data.map(item => {
+                const isInvest = item.type === 'invest';
+                return `
+                    <div class="history-item" data-id="${item.id}" data-type="${item.type}">
+                        <div class="history-main">
+                            <div class="history-date">
+                                ${item.displayDate || new Date(item.timestamp).toLocaleDateString()}
+                                <span class="history-tag ${isInvest ? '' : 'rebalance'}">${isInvest ? '投资' : '再平衡'}</span>
+                                ${item.isCustom ? '<span class="tag tag-primary">自定义</span>' : ''}
+                            </div>
+                            <div class="history-detail">
+                                ${isInvest ? 
+                                    `投入 ¥${item.amount.toFixed(2)} · ${Object.keys(item.allocations).length}个标的 ${item.note ? '· ' + item.note : ''}` : 
+                                    `总资产 ¥${item.totalValue.toFixed(2)} · 偏离度 ${(item.maxDrift*100).toFixed(1)}% · ${item.adjustments.filter(a => a.action !== 'hold').length}项调整`
+                                }
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div class="history-amount ${!isInvest ? 'sell' : ''}">
+                                ${isInvest ? '+' : ''}¥${isInvest ? item.amount.toFixed(2) : item.estimatedFee.toFixed(2)}
+                            </div>
+                            <div class="history-actions">
+                                <button class="icon-btn" onclick="viewDetail('${item.type}', ${item.id})" title="查看详情">👁</button>
+                                <button class="icon-btn" onclick="deleteRecord('${item.type}', ${item.id})" title="删除">🗑</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterHistory(type, btn) {
+            currentHistoryFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const filtered = type === 'all' ? allHistoryData : allHistoryData.filter(i => i.type === type);
+            renderHistoryList(filtered);
+        }
+
+        function searchHistory() {
+            const term = document.getElementById('historySearch').value.toLowerCase();
+            const filtered = allHistoryData.filter(item => {
+                const searchStr = `${item.date} ${item.amount} ${item.note || ''} ${item.totalValue || ''}`.toLowerCase();
+                return searchStr.includes(term);
+            });
+            renderHistoryList(filtered);
+        }
+
+        function deleteRecord(type, id) {
+            if (!checkDb()) return;
+            if (!confirm('确定删除这条记录？此操作不可恢复。')) return;
+            
+            const storeName = type === 'invest' ? 'investments' : 'rebalances';
+            const tx = db.transaction([storeName], 'readwrite');
+            const store = tx.objectStore(storeName);
+            const request = store.delete(id);
+            
+            request.onsuccess = () => {
+                showNotif('success', '✓ 已删除', '记录已移除');
+                loadHistory();
+                updateDashboard();
+            };
+        }
+
+        function viewDetail(type, id) {
+            const item = allHistoryData.find(i => i.id === id && i.type === type);
+            if (!item) return;
+            
+            let content = '';
+            if (type === 'invest') {
+                content = `日期：${item.date}\n金额：¥${item.amount.toFixed(2)}\n备注：${item.note || '无'}\n\n分配详情：\n`;
+                Object.entries(item.allocations).forEach(([name, amount]) => {
+                    content += `${name}: ¥${amount.toFixed(2)} (${(amount/item.amount*100).toFixed(1)}%)\n`;
+                });
+            } else {
+                content = `日期：${item.date}\n总资产：¥${item.totalValue.toFixed(2)}\n最大偏离度：${(item.maxDrift*100).toFixed(2)}%\n\n调仓详情：\n`;
+                item.adjustments.filter(a => a.action !== 'hold').forEach(adj => {
+                    content += `${adj.name}: ${adj.action === 'buy' ? '买入' : '卖出'} ¥${Math.abs(adj.diff).toFixed(2)}\n`;
+                });
+            }
+            
+            alert(content);
+        }
+
+        function showStats() {
+            alert('统计图表功能正在开发中，敬请期待！');
+        }
+
+        // 导出功能
+        function exportPlan(type) {
+            const plan = type === 'invest' ? lastInvestPlan : lastRebalancePlan;
+            if (!plan) {
+                showNotif('error', '✗ 无数据', '请先计算方案');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(plan, null, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type}_plan_${plan.date || new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotif('success', '✓ 已导出', '方案已保存为JSON文件');
+        }
+
+        function exportHistory() {
+            const data = {
+                exportTime: new Date().toISOString(),
+                investments: allHistoryData.filter(i => i.type === 'invest'),
+                rebalances: allHistoryData.filter(i => i.type === 'rebalance'),
+                currentConfig: {
+                    weights: currentWeights,
+                    threshold: document.getElementById('rebalanceThreshold').value,
+                    feeRate: document.getElementById('feeRate').value
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `portfolio_history_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotif('success', '✓ 已导出', '历史记录已导出');
+        }
+
+        function exportSettings() {
+            const config = {
+                weights: currentWeights,
+                threshold: document.getElementById('rebalanceThreshold').value,
+                feeRate: document.getElementById('feeRate').value,
+                exportTime: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `portfolio_config_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotif('success', '✓ 已导出', '配置已保存');
+        }
+
+        function importSettings(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    
+                    if (config.weights) {
+                        currentWeights = config.weights;
+                        createWeightList('settings', currentWeights);
+                        updateWeightTotal('settings');
+                    }
+                    if (config.threshold) document.getElementById('rebalanceThreshold').value = config.threshold;
+                    if (config.feeRate) document.getElementById('feeRate').value = config.feeRate;
+                    
+                    showNotif('success', '✓ 已导入', '配置已成功导入');
+                    saveSettings();
+                } catch (err) {
+                    showNotif('error', '✗ 导入失败', '文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function exportAllData() {
+            if (!checkDb()) return;
+            const tx1 = db.transaction(['investments'], 'readonly');
+            const invStore = tx1.objectStore('investments');
+            const invReq = invStore.getAll();
+            
+            invReq.onsuccess = () => {
+                const investments = invReq.result;
+                
+                const tx2 = db.transaction(['rebalances'], 'readonly');
+                const rebStore = tx2.objectStore('rebalances');
+                const rebReq = rebStore.getAll();
+                
+                rebReq.onsuccess = () => {
+                    const rebalances = rebReq.result;
+                    
+                    const tx3 = db.transaction(['drafts'], 'readonly');
+                    const draftStore = tx3.objectStore('drafts');
+                    const draftReq = draftStore.getAll();
+                    
+                    draftReq.onsuccess = () => {
+                        const drafts = draftReq.result;
+                        
+                        const tx4 = db.transaction(['schemes'], 'readonly');
+                        const schemeStore = tx4.objectStore('schemes');
+                        const schemeReq = schemeStore.getAll();
+                        
+                        schemeReq.onsuccess = () => {
+                            const schemes = schemeReq.result;
+                            
+                            const data = {
+                                exportTime: new Date().toISOString(),
+                                version: '1.0',
+                                config: {
+                                    weights: currentWeights,
+                                    threshold: document.getElementById('rebalanceThreshold').value,
+                                    feeRate: document.getElementById('feeRate').value,
+                                    autoBackup: document.getElementById('autoBackupToggle').classList.contains('active')
+                                },
+                                investments,
+                                rebalances,
+                                drafts,
+                                schemes
+                            };
+                            
+                            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `portfolio_complete_backup_${new Date().toISOString().split('T')[0]}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            
+                            showNotif('success', '✓ 备份完成', '所有数据已导出');
+                        };
+                    };
+                };
+            };
+        }
+
+        function autoExport() {
+            setTimeout(exportAllData, 500);
+        }
+
+        function clearAllData() {
+            if (!checkDb()) return;
+            if (!confirm('⚠️ 警告：确定要清空所有数据？\n\n此操作将删除：\n- 所有投资记录\n- 所有再平衡记录\n- 所有草稿\n- 所有自定义方案\n\n此操作不可恢复！')) return;
+            
+            if (!confirm('再次确认：您真的确定要清空所有数据吗？')) return;
+            
+            const stores = ['investments', 'rebalances', 'drafts', 'schemes'];
+            let completed = 0;
+            
+            stores.forEach(storeName => {
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.clear();
+                
+                request.onsuccess = () => {
+                    completed++;
+                    if (completed === stores.length) {
+                        localStorage.removeItem('portfolioConfig');
+                        showNotif('success', '✓ 已清空', '所有数据已重置');
+                        updateDashboard();
+                        loadHistory();
+                    }
+                };
+            });
+        }
+
+        // 设置
+        function toggleAutoBackup() {
+            const toggle = document.getElementById('autoBackupToggle');
+            toggle.classList.toggle('active');
+            const isActive = toggle.classList.contains('active');
+            showNotif('info', isActive ? '自动备份已开启' : '自动备份已关闭', isActive ? '每次操作后将自动导出数据' : '需要手动备份数据');
+        }
+
+        // 通知
+        function showNotif(type, title, msg) {
+            const notif = document.getElementById('notification');
+            const icon = document.getElementById('notifIcon');
+            const titleEl = document.getElementById('notifTitle');
+            const msgEl = document.getElementById('notifMsg');
+            
+            notif.className = `notification ${type}`;
+            icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+            titleEl.textContent = title;
+            msgEl.textContent = msg;
+            
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDraftModal();
+            }
+            if (e.ctrlKey && e.key === 'i') {
+                e.preventDefault();
+                quickInvest();
+            }
+        });
+    </script>
+</body>
+</html>
