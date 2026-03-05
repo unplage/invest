@@ -622,12 +622,12 @@
                 };
                 
                 request.onsuccess = (event) => {
-                    const db = event.target.result;
-                    const currentVersion = db.version;
+                    const database = event.target.result;
+                    const currentVersion = database.version;
                     const requiredStores = ['investments', 'rebalances', 'drafts', 'schemes'];
                     
                     // 检查是否所有存储都存在
-                    const missingStores = requiredStores.filter(store => !db.objectStoreNames.contains(store));
+                    const missingStores = requiredStores.filter(store => !database.objectStoreNames.contains(store));
                     
                     if (missingStores.length === 0) {
                         // 一切齐全，直接返回
