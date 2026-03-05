@@ -493,7 +493,7 @@
                         <div class="config-detail">每次操作后自动导出数据到JSON文件</div>
                     </div>
                     <div class="config-input">
-                        <div class="toggle active" id="autoBackupToggle" onclick="toggleAutoBackup()"></div>
+                        <div class="toggle" id="autoBackupToggle" onclick="toggleAutoBackup()"></div>
                     </div>
                 </div>
 
@@ -578,6 +578,13 @@
                     currentWeights = config.weights || currentWeights;
                     if (config.threshold) document.getElementById('rebalanceThreshold').value = config.threshold;
                     if (config.feeRate) document.getElementById('feeRate').value = config.feeRate;
+                    // 恢复自动备份状态
+                    const autoBackupToggle = document.getElementById('autoBackupToggle');
+                    if (config.autoBackup === false) {
+                        autoBackupToggle.classList.remove('active');
+                    } else {
+                        autoBackupToggle.classList.add('active');
+                    }
                 } catch (e) {
                     console.error('Failed to load config:', e);
                 }
