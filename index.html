@@ -40,7 +40,7 @@
         .stat-label { font-size: 0.875rem; color: var(--text-muted); }
         .input-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.875rem; font-weight: 500; }
-        input[type="number"], input[type="date"], input[type="text"], select, textarea { width: 100%; padding: 14px 16px; background: rgba(15,23,42,0.6); border: 2px solid var(--border); border-radius: 12px; color: var(--text); font-size: 1rem; transition: all 0.3s ease; font-family: inherit; }
+        input[type="number"], input[type="date"], input[type="text"], input[type="color"], select, textarea { width: 100%; padding: 14px 16px; background: rgba(15,23,42,0.6); border: 2px solid var(--border); border-radius: 12px; color: var(--text); font-size: 1rem; transition: all 0.3s ease; font-family: inherit; }
         textarea { resize: vertical; min-height: 80px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: rgba(15,23,42,0.8); }
         .input-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
@@ -155,6 +155,13 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .error-box { background: rgba(239,68,68,0.2); border: 1px solid var(--danger); border-radius: 12px; padding: 20px; margin-bottom: 20px; color: var(--danger); font-weight: 600; }
         .error-detail { font-size: 0.875rem; color: var(--text-muted); margin-top: 8px; }
+        
+        /* 新增标的相关样式 */
+        .add-asset-form { background: var(--glass); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .add-asset-form .input-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+        .custom-asset-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(16,185,129,0.1); border: 1px solid var(--success); border-radius: 20px; color: var(--success); font-size: 0.75rem; font-weight: 600; margin-left: 8px; }
+        .delete-asset-btn { opacity: 0.6; cursor: pointer; transition: opacity 0.2s; }
+        .delete-asset-btn:hover { opacity: 1; color: var(--danger); }
     </style>
 </head>
 <body>
@@ -462,6 +469,51 @@
                 </div>
             </div>
 
+            <!-- 新增：标的添加功能 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">➕ 添加自定义标的</div>
+                </div>
+                
+                <div class="add-asset-form">
+                    <div class="input-row">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>标的名称 *</label>
+                            <input type="text" id="newAssetName" placeholder="例如：韩国KOSPI200">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>代码 *</label>
+                            <input type="text" id="newAssetCode" placeholder="例如：EWY">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>所属地区 *</label>
+                            <select id="newAssetRegion">
+                                <option value="US">美国</option>
+                                <option value="EU">欧洲</option>
+                                <option value="APAC">亚太</option>
+                                <option value="CN">中国</option>
+                                <option value="OTHER">其他</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>颜色标识</label>
+                            <input type="color" id="newAssetColor" value="#22c55e" style="height: 46px; padding: 4px;">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>描述</label>
+                        <input type="text" id="newAssetDesc" placeholder="例如：韩国股市ETF">
+                    </div>
+                    <div class="btn-group" style="margin-top: 16px;">
+                        <button class="btn btn-primary btn-small" onclick="addNewAsset()">➕ 添加标的</button>
+                        <button class="btn btn-secondary btn-small" onclick="resetAssetForm()">清空</button>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-bottom: 16px;">当前标的列表</div>
+                <div id="assetList"></div>
+            </div>
+
             <div class="card">
                 <div class="card-title">⚙️ 应用设置</div>
                 
@@ -537,8 +589,8 @@
     </div>
 
     <script>
-        // 数据定义
-        const ASSETS = {
+        // 数据定义 - 使用let以便动态添加
+        let ASSETS = {
             '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
             '纳斯达克100': { code: 'QQQ', color: '#8b5cf6', region: 'US', desc: '美国科技股' },
             '日经225': { code: 'EWJ', color: '#ec4899', region: 'APAC', desc: '日本股市' },
@@ -556,7 +608,7 @@
             equal: { '标普500': 0.125, '纳斯达克100': 0.125, '日经225': 0.125, '德国DAX': 0.125, '印度Nifty50': 0.125, '越南VNIndex': 0.125, 'REITs': 0.125, '中债备用': 0.125 }
         };
 
-        let currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
+        let currentWeights = {};
         let tempInvestWeights = null;
         let tempRebalanceWeights = null;
         let db = null;
@@ -570,12 +622,16 @@
             document.getElementById('investDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('rebalanceDate').value = new Date().toISOString().split('T')[0];
             
-            // 加载本地存储的配置
+            // 加载本地存储的配置和自定义标的
             const saved = localStorage.getItem('portfolioConfig');
             if (saved) {
                 try {
                     const config = JSON.parse(saved);
-                    currentWeights = config.weights || currentWeights;
+                    // 恢复自定义标的
+                    if (config.customAssets) {
+                        ASSETS = { ...ASSETS, ...config.customAssets };
+                    }
+                    currentWeights = config.weights || JSON.parse(JSON.stringify(PRESETS.default));
                     if (config.threshold) document.getElementById('rebalanceThreshold').value = config.threshold;
                     if (config.feeRate) document.getElementById('feeRate').value = config.feeRate;
                     // 恢复自动备份状态
@@ -587,15 +643,19 @@
                     }
                 } catch (e) {
                     console.error('Failed to load config:', e);
+                    currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
                 }
+            } else {
+                currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
             }
             
             try {
-                db = await initDB();  // ← 添加赋值操作
+                db = await initDB();
                 console.log('IndexedDB ready, db instance:', db);
                 
                 initWeightEditors();
                 loadSavedSchemes();
+                renderAssetList();
                 updateDashboard();
                 showNotif('success', '✓ 应用已就绪', '数据加载完成');
             } catch (e) {
@@ -643,7 +703,7 @@
                     } else {
                         // 缺少存储，需要升级
                         console.log('Missing stores, upgrading from version', currentVersion, 'to', currentVersion + 1);
-                        db.close(); // 关闭当前连接
+                        database.close(); // 关闭当前连接
                         
                         // 以更高版本打开以触发升级
                         const upgradeRequest = indexedDB.open('PortfolioDB', currentVersion + 1);
@@ -709,6 +769,7 @@
             if (tab === 'settings') {
                 initWeightEditors();
                 loadSavedSchemes();
+                renderAssetList();
             }
         }
 
@@ -790,7 +851,7 @@
         }
 
         function getRegionName(code) {
-            const map = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
+            const map = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国', OTHER: '其他'};
             return map[code] || code;
         }
 
@@ -835,6 +896,12 @@
         // 预设方案
         function loadPreset(name, element) {
             currentWeights = JSON.parse(JSON.stringify(PRESETS[name]));
+            // 确保包含所有当前标的
+            Object.keys(ASSETS).forEach(assetName => {
+                if (!(assetName in currentWeights)) {
+                    currentWeights[assetName] = 0;
+                }
+            });
             createWeightList('settings', currentWeights);
             updateWeightTotal('settings');
             
@@ -913,6 +980,12 @@
                 const scheme = request.result;
                 if (scheme) {
                     currentWeights = JSON.parse(JSON.stringify(scheme.weights));
+                    // 确保包含所有当前标的
+                    Object.keys(ASSETS).forEach(assetName => {
+                        if (!(assetName in currentWeights)) {
+                            currentWeights[assetName] = 0;
+                        }
+                    });
                     createWeightList('settings', currentWeights);
                     updateWeightTotal('settings');
                     showNotif('success', '✓ 已应用', `已切换至"${name}"方案`);
@@ -940,15 +1013,118 @@
                 return;
             }
             
+            // 分离自定义标的
+            const defaultAssetNames = Object.keys(PRESETS.default);
+            const customAssets = {};
+            Object.entries(ASSETS).forEach(([name, info]) => {
+                if (!defaultAssetNames.includes(name)) {
+                    customAssets[name] = info;
+                }
+            });
+            
             const config = {
                 weights: currentWeights,
                 threshold: parseFloat(document.getElementById('rebalanceThreshold').value),
                 feeRate: parseFloat(document.getElementById('feeRate').value),
-                autoBackup: document.getElementById('autoBackupToggle').classList.contains('active')
+                autoBackup: document.getElementById('autoBackupToggle').classList.contains('active'),
+                customAssets: customAssets
             };
             
             localStorage.setItem('portfolioConfig', JSON.stringify(config));
             showNotif('success', '✓ 配置已保存', '默认配置已更新');
+        }
+
+        // 新增：添加新标的
+        function addNewAsset() {
+            const name = document.getElementById('newAssetName').value.trim();
+            const code = document.getElementById('newAssetCode').value.trim();
+            const region = document.getElementById('newAssetRegion').value;
+            const color = document.getElementById('newAssetColor').value;
+            const desc = document.getElementById('newAssetDesc').value.trim() || `${name}ETF`;
+            
+            if (!name || !code) {
+                showNotif('error', '✗ 输入错误', '请填写标的名称和代码');
+                return;
+            }
+            
+            if (ASSETS[name]) {
+                showNotif('error', '✗ 已存在', '该标的名称已存在');
+                return;
+            }
+            
+            // 添加新标的
+            ASSETS[name] = { code, color, region, desc };
+            
+            // 初始化权重为0
+            currentWeights[name] = 0;
+            
+            // 刷新显示
+            initWeightEditors();
+            renderAssetList();
+            saveSettings();
+            
+            showNotif('success', '✓ 添加成功', `已添加标的：${name}`);
+            resetAssetForm();
+        }
+
+        function resetAssetForm() {
+            document.getElementById('newAssetName').value = '';
+            document.getElementById('newAssetCode').value = '';
+            document.getElementById('newAssetRegion').value = 'US';
+            document.getElementById('newAssetColor').value = '#22c55e';
+            document.getElementById('newAssetDesc').value = '';
+        }
+
+        // 新增：渲染标的列表
+        function renderAssetList() {
+            const container = document.getElementById('assetList');
+            if (!container) return;
+            
+            const defaultAssetNames = Object.keys(PRESETS.default);
+            
+            container.innerHTML = Object.entries(ASSETS).map(([name, info]) => {
+                const isCustom = !defaultAssetNames.includes(name);
+                return `
+                    <div class="config-item">
+                        <div class="config-info">
+                            <div class="config-color" style="background: ${info.color}"></div>
+                            <div>
+                                <div class="config-name">
+                                    ${name} 
+                                    <span style="color: var(--text-muted); font-size: 0.875rem; font-weight: 400;">(${info.code})</span>
+                                    ${isCustom ? '<span class="custom-asset-tag">自定义</span>' : ''}
+                                </div>
+                                <div class="config-detail">${info.desc} · ${getRegionName(info.region)}</div>
+                            </div>
+                        </div>
+                        <div class="config-input">
+                            ${isCustom ? `<span class="delete-asset-btn" onclick="deleteAsset('${name}')" title="删除标的">🗑</span>` : '<span style="color: var(--text-muted); font-size: 0.75rem;">系统预设</span>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 新增：删除自定义标的
+        function deleteAsset(name) {
+            if (!confirm(`确定删除标的"${name}"？\n\n注意：删除后该标的将从配置中移除，历史记录中的相关数据仍将保留。`)) return;
+            
+            // 从ASSETS中删除
+            delete ASSETS[name];
+            
+            // 从当前权重中删除
+            delete currentWeights[name];
+            
+            // 从临时权重中删除
+            if (tempInvestWeights) delete tempInvestWeights[name];
+            if (tempRebalanceWeights) delete tempRebalanceWeights[name];
+            
+            // 刷新显示
+            initWeightEditors();
+            renderAssetList();
+            saveSettings();
+            
+            showNotif('success', '✓ 已删除', `标的"${name}"已移除`);
         }
 
         // 投资功能
@@ -976,6 +1152,7 @@
             grid.innerHTML = '';
 
             Object.entries(weights).forEach(([name, weight]) => {
+                if (weight <= 0) return; // 跳过权重为0的标的
                 const alloc = amount * weight;
                 allocations[name] = alloc;
                 
@@ -1018,17 +1195,21 @@
         function generateInvestTips(weights, amount) {
             const regions = {};
             Object.entries(weights).forEach(([name, w]) => {
+                if (w <= 0) return;
                 const region = ASSETS[name].region;
                 regions[region] = (regions[region] || 0) + w;
             });
             
             let html = '<div style="margin-bottom: 8px;"><strong>地域分布：</strong>';
-            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
+            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国', OTHER: '其他'};
             html += Object.entries(regions).map(([r, p]) => `${regionNames[r]} ${(p*100).toFixed(0)}%`).join(' · ');
             html += '</div>';
             
-            const topHolding = Object.entries(weights).sort((a,b) => b[1]-a[1])[0];
-            html += `<div>最大持仓：<strong>${topHolding[0]}</strong> ${(topHolding[1]*100).toFixed(1)}% · 建议单笔至少投入<strong>¥1000</strong>以降低交易成本占比</div>`;
+            const activeHoldings = Object.entries(weights).filter(([_, w]) => w > 0);
+            if (activeHoldings.length > 0) {
+                const topHolding = activeHoldings.sort((a,b) => b[1]-a[1])[0];
+                html += `<div>最大持仓：<strong>${topHolding[0]}</strong> ${(topHolding[1]*100).toFixed(1)}% · 建议单笔至少投入<strong>¥1000</strong>以降低交易成本占比</div>`;
+            }
             
             return html;
         }
@@ -1291,6 +1472,8 @@
             let sellCount = 0;
             
             Object.entries(targetWeights).forEach(([name, targetWeight]) => {
+                if (targetWeight <= 0 && (!holdings[name] || holdings[name] <= 0)) return; // 跳过权重和持仓都为0的标的
+                
                 const current = holdings[name] || 0;
                 const currentWeight = current / totalValue;
                 const target = totalValue * targetWeight;
@@ -1516,6 +1699,7 @@
             let maxDrift = 0;
             if (totalAssets > 0) {
                 Object.entries(currentWeights).forEach(([name, target]) => {
+                    if (target <= 0) return;
                     const current = (currentHoldings[name] || 0) / totalAssets;
                     maxDrift = Math.max(maxDrift, Math.abs(current - target));
                 });
@@ -1559,13 +1743,14 @@
             const byAsset = {};
             
             Object.entries(holdings).forEach(([name, value]) => {
-                const region = ASSETS[name].region;
+                if (value <= 0) return;
+                const region = ASSETS[name]?.region || 'OTHER';
                 byRegion[region] = (byRegion[region] || 0) + value;
                 byAsset[name] = value;
             });
             
-            const regionNames = {US: '美国市场', EU: '欧洲市场', APAC: '亚太市场', CN: '中国市场'};
-            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981'};
+            const regionNames = {US: '美国市场', EU: '欧洲市场', APAC: '亚太市场', CN: '中国市场', OTHER: '其他市场'};
+            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981', OTHER: '#64748b'};
             
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">';
             
@@ -1590,10 +1775,11 @@
             html += '<div><div style="font-weight: 600; margin-bottom: 16px; color: var(--text-muted); font-size: 0.875rem;">标的详情</div><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">';
             Object.entries(byAsset).sort((a,b) => b[1]-a[1]).forEach(([name, value]) => {
                 const percent = (value / total * 100).toFixed(1);
-                const target = currentWeights[name] * 100;
+                const target = (currentWeights[name] || 0) * 100;
                 const diff = (percent - target).toFixed(1);
+                const assetInfo = ASSETS[name] || { color: '#64748b' };
                 html += `
-                    <div style="background: var(--glass); padding: 12px; border-radius: 8px; border-left: 3px solid ${ASSETS[name].color};">
+                    <div style="background: var(--glass); padding: 12px; border-radius: 8px; border-left: 3px solid ${assetInfo.color};">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span style="font-weight: 600; font-size: 0.875rem;">${name}</span>
                             <span style="font-size: 0.75rem; color: ${Math.abs(diff) > 5 ? 'var(--warning)' : 'var(--text-muted)'}">${diff > 0 ? '+' : ''}${diff}%</span>
@@ -1750,16 +1936,16 @@
                 </div>
             `;
             
-            const regionInvest = {US: 0, EU: 0, APAC: 0, CN: 0};
+            const regionInvest = {US: 0, EU: 0, APAC: 0, CN: 0, OTHER: 0};
             filteredInv.forEach(inv => {
                 Object.entries(inv.allocations).forEach(([name, amount]) => {
-                    const region = ASSETS[name].region;
+                    const region = ASSETS[name]?.region || 'OTHER';
                     regionInvest[region] += amount;
                 });
             });
             
-            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国'};
-            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981'};
+            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国', OTHER: '其他'};
+            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981', OTHER: '#64748b'};
             
             document.getElementById('regionAnalysis').innerHTML = Object.entries(regionInvest)
                 .filter(([_,v]) => v > 0)
@@ -1960,10 +2146,21 @@
         }
 
         function exportSettings() {
+            // 分离自定义标的
+            const defaultAssetNames = Object.keys(PRESETS.default);
+            const customAssets = {};
+            Object.entries(ASSETS).forEach(([name, info]) => {
+                if (!defaultAssetNames.includes(name)) {
+                    customAssets[name] = info;
+                }
+            });
+            
             const config = {
                 weights: currentWeights,
                 threshold: document.getElementById('rebalanceThreshold').value,
                 feeRate: document.getElementById('feeRate').value,
+                autoBackup: document.getElementById('autoBackupToggle').classList.contains('active'),
+                customAssets: customAssets,
                 exportTime: new Date().toISOString()
             };
             
@@ -1989,11 +2186,23 @@
                     
                     if (config.weights) {
                         currentWeights = config.weights;
+                        // 恢复自定义标的
+                        if (config.customAssets) {
+                            Object.entries(config.customAssets).forEach(([name, info]) => {
+                                ASSETS[name] = info;
+                            });
+                        }
                         createWeightList('settings', currentWeights);
                         updateWeightTotal('settings');
+                        renderAssetList();
                     }
                     if (config.threshold) document.getElementById('rebalanceThreshold').value = config.threshold;
                     if (config.feeRate) document.getElementById('feeRate').value = config.feeRate;
+                    if (config.autoBackup !== undefined) {
+                        const toggle = document.getElementById('autoBackupToggle');
+                        if (config.autoBackup) toggle.classList.add('active');
+                        else toggle.classList.remove('active');
+                    }
                     
                     showNotif('success', '✓ 已导入', '配置已成功导入');
                     saveSettings();
@@ -2035,6 +2244,15 @@
                         schemeReq.onsuccess = () => {
                             const schemes = schemeReq.result;
                             
+                            // 分离自定义标的
+                            const defaultAssetNames = Object.keys(PRESETS.default);
+                            const customAssets = {};
+                            Object.entries(ASSETS).forEach(([name, info]) => {
+                                if (!defaultAssetNames.includes(name)) {
+                                    customAssets[name] = info;
+                                }
+                            });
+                            
                             const data = {
                                 exportTime: new Date().toISOString(),
                                 version: '1.0',
@@ -2042,7 +2260,8 @@
                                     weights: currentWeights,
                                     threshold: document.getElementById('rebalanceThreshold').value,
                                     feeRate: document.getElementById('feeRate').value,
-                                    autoBackup: document.getElementById('autoBackupToggle').classList.contains('active')
+                                    autoBackup: document.getElementById('autoBackupToggle').classList.contains('active'),
+                                    customAssets: customAssets
                                 },
                                 investments,
                                 rebalances,
@@ -2071,7 +2290,7 @@
 
         function clearAllData() {
             if (!checkDb()) return;
-            if (!confirm('⚠️ 警告：确定要清空所有数据？\n\n此操作将删除：\n- 所有投资记录\n- 所有再平衡记录\n- 所有草稿\n- 所有自定义方案\n\n此操作不可恢复！')) return;
+            if (!confirm('⚠️ 警告：确定要清空所有数据？\n\n此操作将删除：\n- 所有投资记录\n- 所有再平衡记录\n- 所有草稿\n- 所有自定义方案\n- 所有自定义标的\n\n此操作不可恢复！')) return;
             
             if (!confirm('再次确认：您真的确定要清空所有数据吗？')) return;
             
@@ -2086,10 +2305,25 @@
                 request.onsuccess = () => {
                     completed++;
                     if (completed === stores.length) {
+                        // 重置ASSETS到默认值
+                        ASSETS = {
+                            '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
+                            '纳斯达克100': { code: 'QQQ', color: '#8b5cf6', region: 'US', desc: '美国科技股' },
+                            '日经225': { code: 'EWJ', color: '#ec4899', region: 'APAC', desc: '日本股市' },
+                            '德国DAX': { code: 'EWG', color: '#f43f5e', region: 'EU', desc: '德国股市' },
+                            '印度Nifty50': { code: 'INDA', color: '#f59e0b', region: 'APAC', desc: '印度股市' },
+                            '越南VNIndex': { code: 'VNM', color: '#10b981', region: 'APAC', desc: '越南股市' },
+                            'REITs': { code: 'VNQ', color: '#3b82f6', region: 'US', desc: '房地产信托' },
+                            '中债备用': { code: 'CHBond', color: '#64748b', region: 'CN', desc: '中国债券' }
+                        };
+                        currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
+                        
                         localStorage.removeItem('portfolioConfig');
                         showNotif('success', '✓ 已清空', '所有数据已重置');
                         updateDashboard();
                         loadHistory();
+                        initWeightEditors();
+                        renderAssetList();
                     }
                 };
             });
