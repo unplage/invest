@@ -610,63 +610,66 @@
             }
         });
 
-        // IndexedDB 初始化（自动修复缺失存储）
-        async function initDB() {
-            const requiredStores = ['investments', 'rebalances', 'drafts', 'schemes'];
-            let currentVersion = 1;
-            
-            while (true) {
-                try {
-                    const db = await openDB(currentVersion);
-                    // 检查所有需要的存储是否存在
-                    const missingStores = requiredStores.filter(store => !db.objectStoreNames.contains(store));
-                    if (missingStores.length === 0) {
-                        // 所有存储都存在，成功
-                        return db;
-                    } else {
-                        // 缺少存储，需要升级版本
-                        console.log('Missing stores:', missingStores, 'upgrading to version', currentVersion + 1);
-                        db.close();
-                        currentVersion++;
-                        // 继续循环，尝试以更高版本打开
-                    }
-                } catch (error) {
-                    throw error;
-                }
-            }
-        }
-
-        function openDB(version) {
+        // 智能数据库初始化：先获取当前版本，再决定是否需要升级
+        function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('PortfolioDB', version);
+                // 第一步：尝试不指定版本打开数据库，获取当前版本和存储列表
+                const request = indexedDB.open('PortfolioDB');
                 
                 request.onerror = () => {
-                    reject(new Error(request.error?.message || '无法打开数据库，可能是隐私模式或权限不足'));
+                    // 如果连不带版本的打开都失败，可能是权限问题
+                    reject(new Error(request.error?.message || '无法打开数据库，请检查浏览器设置'));
                 };
                 
-                request.onsuccess = () => {
-                    resolve(request.result);
-                };
-                
-                request.onupgradeneeded = (e) => {
-                    const db = e.target.result;
-                    console.log('Upgrading database to version', version);
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    const currentVersion = db.version;
+                    const requiredStores = ['investments', 'rebalances', 'drafts', 'schemes'];
                     
-                    if (!db.objectStoreNames.contains('investments')) {
-                        db.createObjectStore('investments', {keyPath: 'id', autoIncrement: true});
-                        console.log('Created investments store');
-                    }
-                    if (!db.objectStoreNames.contains('rebalances')) {
-                        db.createObjectStore('rebalances', {keyPath: 'id', autoIncrement: true});
-                        console.log('Created rebalances store');
-                    }
-                    if (!db.objectStoreNames.contains('drafts')) {
-                        db.createObjectStore('drafts', {keyPath: 'id', autoIncrement: true});
-                        console.log('Created drafts store');
-                    }
-                    if (!db.objectStoreNames.contains('schemes')) {
-                        db.createObjectStore('schemes', {keyPath: 'name'});
-                        console.log('Created schemes store');
+                    // 检查是否所有存储都存在
+                    const missingStores = requiredStores.filter(store => !db.objectStoreNames.contains(store));
+                    
+                    if (missingStores.length === 0) {
+                        // 一切齐全，直接返回
+                        console.log('Database ready with version', currentVersion);
+                        resolve(db);
+                    } else {
+                        // 缺少存储，需要升级
+                        console.log('Missing stores, upgrading from version', currentVersion, 'to', currentVersion + 1);
+                        db.close(); // 关闭当前连接
+                        
+                        // 以更高版本打开以触发升级
+                        const upgradeRequest = indexedDB.open('PortfolioDB', currentVersion + 1);
+                        
+                        upgradeRequest.onerror = () => {
+                            reject(new Error(upgradeRequest.error?.message || '升级数据库失败'));
+                        };
+                        
+                        upgradeRequest.onsuccess = (e) => {
+                            console.log('Upgrade successful, new version:', e.target.result.version);
+                            resolve(e.target.result);
+                        };
+                        
+                        upgradeRequest.onupgradeneeded = (e) => {
+                            const newDb = e.target.result;
+                            // 创建缺失的存储
+                            if (!newDb.objectStoreNames.contains('investments')) {
+                                newDb.createObjectStore('investments', {keyPath: 'id', autoIncrement: true});
+                                console.log('Created investments store during upgrade');
+                            }
+                            if (!newDb.objectStoreNames.contains('rebalances')) {
+                                newDb.createObjectStore('rebalances', {keyPath: 'id', autoIncrement: true});
+                                console.log('Created rebalances store during upgrade');
+                            }
+                            if (!newDb.objectStoreNames.contains('drafts')) {
+                                newDb.createObjectStore('drafts', {keyPath: 'id', autoIncrement: true});
+                                console.log('Created drafts store during upgrade');
+                            }
+                            if (!newDb.objectStoreNames.contains('schemes')) {
+                                newDb.createObjectStore('schemes', {keyPath: 'name'});
+                                console.log('Created schemes store during upgrade');
+                            }
+                        };
                     }
                 };
             });
