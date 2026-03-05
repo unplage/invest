@@ -584,8 +584,8 @@
             }
             
             try {
-                await initDB();
-                console.log('IndexedDB ready, initializing app...');
+                db = await initDB();  // ← 添加赋值操作
+                console.log('IndexedDB ready, db instance:', db);
                 
                 initWeightEditors();
                 loadSavedSchemes();
@@ -632,7 +632,7 @@
                     if (missingStores.length === 0) {
                         // 一切齐全，直接返回
                         console.log('Database ready with version', currentVersion);
-                        resolve(db);
+                        resolve(database);
                     } else {
                         // 缺少存储，需要升级
                         console.log('Missing stores, upgrading from version', currentVersion, 'to', currentVersion + 1);
