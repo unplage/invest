@@ -162,6 +162,24 @@
         .custom-asset-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(16,185,129,0.1); border: 1px solid var(--success); border-radius: 20px; color: var(--success); font-size: 0.75rem; font-weight: 600; margin-left: 8px; }
         .delete-asset-btn { opacity: 0.6; cursor: pointer; transition: opacity 0.2s; }
         .delete-asset-btn:hover { opacity: 1; color: var(--danger); }
+        
+        /* 数据导入相关样式 */
+        .import-section { background: var(--glass); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .import-option { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .import-option:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .import-option-title { font-weight: 600; margin-bottom: 8px; color: var(--text); }
+        .import-option-desc { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 12px; }
+        .import-progress { margin-top: 12px; padding: 12px; background: rgba(99,102,241,0.1); border-radius: 8px; border-left: 3px solid var(--primary); }
+        .import-progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .import-progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+        .import-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+        .import-stat { text-align: center; padding: 8px; background: var(--glass); border-radius: 8px; }
+        .import-stat-value { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .import-stat-label { font-size: 0.75rem; color: var(--text-muted); }
+        .file-drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+        .file-drop-zone:hover { border-color: var(--primary); background: rgba(99,102,241,0.05); }
+        .file-drop-zone.dragover { border-color: var(--primary); background: rgba(99,102,241,0.1); }
+        .file-drop-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -514,6 +532,60 @@
                 <div id="assetList"></div>
             </div>
 
+            <!-- 新增：数据导入功能 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📥 数据导入/迁移</div>
+                </div>
+                
+                <div class="import-section">
+                    <div class="import-option">
+                        <div class="import-option-title">📦 完整数据导入（换机迁移）</div>
+                        <div class="import-option-desc">从之前导出的完整备份文件中恢复所有数据，包括投资记录、再平衡记录、草稿、自定义标的和方案。支持拖拽文件。</div>
+                        <div class="file-drop-zone" id="fullImportDropZone" onclick="document.getElementById('fullImportFile').click()">
+                            <div class="file-drop-icon">📁</div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">点击或拖拽文件到此处</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">支持 .json 格式的完整备份文件</div>
+                        </div>
+                        <input type="file" id="fullImportFile" style="display: none;" accept=".json" onchange="importFullData(this)">
+                    </div>
+                    
+                    <div class="import-option">
+                        <div class="import-option-title">⚙️ 仅导入配置</div>
+                        <div class="import-option-desc">仅导入资产配置方案和自定义标的设置，不导入历史记录。</div>
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('configImportFile').click()">选择配置文件</button>
+                        <input type="file" id="configImportFile" style="display: none;" accept=".json" onchange="importSettings(this)">
+                    </div>
+                    
+                    <div class="import-option">
+                        <div class="import-option-title">📊 导入历史记录</div>
+                        <div class="import-option-desc">单独导入投资历史和再平衡记录，会自动合并到现有数据中。</div>
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('historyImportFile').click()">选择历史记录文件</button>
+                        <input type="file" id="historyImportFile" style="display: none;" accept=".json" onchange="importHistoryOnly(this)">
+                    </div>
+                </div>
+
+                <div id="importProgress" style="display: none;">
+                    <div class="import-progress">
+                        <div style="font-weight: 600; margin-bottom: 8px;">📥 正在导入数据...</div>
+                        <div id="importStatus">准备中...</div>
+                        <div class="import-progress-bar">
+                            <div class="import-progress-fill" id="importProgressFill"></div>
+                        </div>
+                        <div class="import-stats" id="importStats"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; padding: 16px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border-left: 4px solid var(--warning);">
+                    <div style="font-weight: 600; margin-bottom: 4px; color: var(--warning);">⚠️ 导入须知</div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted);">
+                        1. 完整导入会先清空现有数据，请确保已备份当前数据<br>
+                        2. 相同时间戳的记录会被跳过，避免重复<br>
+                        3. 导入完成后请刷新页面以更新显示
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-title">⚙️ 应用设置</div>
                 
@@ -649,6 +721,9 @@
                 currentWeights = JSON.parse(JSON.stringify(PRESETS.default));
             }
             
+            // 设置拖拽导入
+            setupDragAndDrop();
+            
             try {
                 db = await initDB();
                 console.log('IndexedDB ready, db instance:', db);
@@ -676,6 +751,41 @@
                 showNotif('error', '✗ 初始化失败', e.message);
             }
         });
+
+        // 设置拖拽导入
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('fullImportDropZone');
+            if (!dropZone) return;
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.add('dragover');
+                }, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.remove('dragover');
+                }, false);
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleImportFile(files[0]);
+                }
+            }, false);
+        }
 
         // 智能数据库初始化：先获取当前版本，再决定是否需要升级
         function initDB() {
@@ -1125,6 +1235,363 @@
             saveSettings();
             
             showNotif('success', '✓ 已删除', `标的"${name}"已移除`);
+        }
+
+        // ==================== 数据导入功能 ====================
+
+        // 处理文件选择
+        function importFullData(input) {
+            const file = input.files[0];
+            if (file) {
+                handleImportFile(file);
+            }
+            input.value = ''; // 清空input，允许重复选择同一文件
+        }
+
+        // 处理导入文件
+        async function handleImportFile(file) {
+            if (!file) return;
+            
+            if (!file.name.endsWith('.json')) {
+                showNotif('error', '✗ 文件格式错误', '请选择 .json 格式的文件');
+                return;
+            }
+
+            const progressDiv = document.getElementById('importProgress');
+            const statusDiv = document.getElementById('importStatus');
+            const progressFill = document.getElementById('importProgressFill');
+            const statsDiv = document.getElementById('importStats');
+            
+            progressDiv.style.display = 'block';
+            statusDiv.textContent = '正在读取文件...';
+            progressFill.style.width = '10%';
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                // 验证数据格式
+                if (!data.version && !data.config) {
+                    throw new Error('无效的备份文件格式');
+                }
+                
+                statusDiv.textContent = '验证数据完整性...';
+                progressFill.style.width = '20%';
+                
+                // 确认导入
+                const confirmMsg = `确定要导入以下数据？\n\n` +
+                    `📅 导出时间：${data.exportTime || '未知'}\n` +
+                    `💰 投资记录：${data.investments?.length || 0} 条\n` +
+                    `⚖️ 再平衡记录：${data.rebalances?.length || 0} 条\n` +
+                    `📝 草稿：${data.drafts?.length || 0} 条\n` +
+                    `📋 自定义方案：${data.schemes?.length || 0} 个\n` +
+                    `🏷️ 自定义标的：${Object.keys(data.config?.customAssets || {}).length} 个\n\n` +
+                    `⚠️ 警告：这将覆盖当前的所有数据！`;
+                
+                if (!confirm(confirmMsg)) {
+                    progressDiv.style.display = 'none';
+                    return;
+                }
+                
+                // 执行导入
+                await executeFullImport(data, statusDiv, progressFill, statsDiv);
+                
+            } catch (error) {
+                statusDiv.textContent = `错误：${error.message}`;
+                progressFill.style.width = '100%';
+                progressFill.style.background = 'var(--danger)';
+                showNotif('error', '✗ 导入失败', error.message);
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressFill.style.background = 'var(--primary)';
+                }, 3000);
+            }
+        }
+
+        // 执行完整导入
+        async function executeFullImport(data, statusDiv, progressFill, statsDiv) {
+            if (!checkDb()) throw new Error('数据库未就绪');
+            
+            const stats = {
+                investments: 0,
+                rebalances: 0,
+                drafts: 0,
+                schemes: 0,
+                errors: 0
+            };
+            
+            // 1. 清空现有数据
+            statusDiv.textContent = '清空现有数据...';
+            progressFill.style.width = '30%';
+            
+            const stores = ['investments', 'rebalances', 'drafts', 'schemes'];
+            for (const storeName of stores) {
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                await new Promise((resolve, reject) => {
+                    const req = store.clear();
+                    req.onsuccess = resolve;
+                    req.onerror = () => reject(new Error(`清空${storeName}失败`));
+                });
+            }
+            
+            // 2. 恢复配置
+            statusDiv.textContent = '恢复配置...';
+            progressFill.style.width = '40%';
+            
+            if (data.config) {
+                // 恢复自定义标的
+                if (data.config.customAssets) {
+                    Object.entries(data.config.customAssets).forEach(([name, info]) => {
+                        ASSETS[name] = info;
+                    });
+                }
+                
+                // 恢复权重
+                if (data.config.weights) {
+                    currentWeights = data.config.weights;
+                }
+                
+                // 恢复设置
+                if (data.config.threshold) {
+                    document.getElementById('rebalanceThreshold').value = data.config.threshold;
+                }
+                if (data.config.feeRate) {
+                    document.getElementById('feeRate').value = data.config.feeRate;
+                }
+                if (data.config.autoBackup !== undefined) {
+                    const toggle = document.getElementById('autoBackupToggle');
+                    if (data.config.autoBackup) toggle.classList.add('active');
+                    else toggle.classList.remove('active');
+                }
+                
+                saveSettings();
+            }
+            
+            // 3. 导入投资记录
+            statusDiv.textContent = '导入投资记录...';
+            progressFill.style.width = '50%';
+            
+            if (data.investments && data.investments.length > 0) {
+                const tx = db.transaction(['investments'], 'readwrite');
+                const store = tx.objectStore('investments');
+                
+                for (const item of data.investments) {
+                    try {
+                        // 移除id，让数据库自动生成
+                        const { id, ...newItem } = item;
+                        await new Promise((resolve, reject) => {
+                            const req = store.add(newItem);
+                            req.onsuccess = resolve;
+                            req.onerror = () => reject(new Error('添加投资记录失败'));
+                        });
+                        stats.investments++;
+                    } catch (e) {
+                        stats.errors++;
+                        console.error('导入投资记录失败:', e);
+                    }
+                }
+            }
+            
+            // 4. 导入再平衡记录
+            statusDiv.textContent = '导入再平衡记录...';
+            progressFill.style.width = '65%';
+            
+            if (data.rebalances && data.rebalances.length > 0) {
+                const tx = db.transaction(['rebalances'], 'readwrite');
+                const store = tx.objectStore('rebalances');
+                
+                for (const item of data.rebalances) {
+                    try {
+                        const { id, ...newItem } = item;
+                        await new Promise((resolve, reject) => {
+                            const req = store.add(newItem);
+                            req.onsuccess = resolve;
+                            req.onerror = () => reject(new Error('添加再平衡记录失败'));
+                        });
+                        stats.rebalances++;
+                    } catch (e) {
+                        stats.errors++;
+                        console.error('导入再平衡记录失败:', e);
+                    }
+                }
+            }
+            
+            // 5. 导入草稿
+            statusDiv.textContent = '导入草稿...';
+            progressFill.style.width = '80%';
+            
+            if (data.drafts && data.drafts.length > 0) {
+                const tx = db.transaction(['drafts'], 'readwrite');
+                const store = tx.objectStore('drafts');
+                
+                for (const item of data.drafts) {
+                    try {
+                        const { id, ...newItem } = item;
+                        await new Promise((resolve, reject) => {
+                            const req = store.add(newItem);
+                            req.onsuccess = resolve;
+                            req.onerror = () => reject(new Error('添加草稿失败'));
+                        });
+                        stats.drafts++;
+                    } catch (e) {
+                        stats.errors++;
+                        console.error('导入草稿失败:', e);
+                    }
+                }
+            }
+            
+            // 6. 导入方案
+            statusDiv.textContent = '导入自定义方案...';
+            progressFill.style.width = '90%';
+            
+            if (data.schemes && data.schemes.length > 0) {
+                const tx = db.transaction(['schemes'], 'readwrite');
+                const store = tx.objectStore('schemes');
+                
+                for (const item of data.schemes) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const req = store.put(item);
+                            req.onsuccess = resolve;
+                            req.onerror = () => reject(new Error('添加方案失败'));
+                        });
+                        stats.schemes++;
+                    } catch (e) {
+                        stats.errors++;
+                        console.error('导入方案失败:', e);
+                    }
+                }
+            }
+            
+            // 完成
+            progressFill.style.width = '100%';
+            statusDiv.textContent = '导入完成！';
+            
+            statsDiv.innerHTML = `
+                <div class="import-stat">
+                    <div class="import-stat-value">${stats.investments}</div>
+                    <div class="import-stat-label">投资记录</div>
+                </div>
+                <div class="import-stat">
+                    <div class="import-stat-value">${stats.rebalances}</div>
+                    <div class="import-stat-label">再平衡</div>
+                </div>
+                <div class="import-stat">
+                    <div class="import-stat-value">${stats.drafts}</div>
+                    <div class="import-stat-label">草稿</div>
+                </div>
+                <div class="import-stat">
+                    <div class="import-stat-value">${stats.schemes}</div>
+                    <div class="import-stat-label">方案</div>
+                </div>
+                <div class="import-stat">
+                    <div class="import-stat-value" style="color: ${stats.errors > 0 ? 'var(--danger)' : 'var(--success)'}">${stats.errors}</div>
+                    <div class="import-stat-label">错误</div>
+                </div>
+            `;
+            
+            showNotif('success', '✓ 导入成功', `成功导入数据，${stats.errors}个错误`);
+            
+            // 刷新页面显示
+            setTimeout(() => {
+                initWeightEditors();
+                renderAssetList();
+                updateDashboard();
+                loadSavedSchemes();
+            }, 500);
+            
+            setTimeout(() => {
+                document.getElementById('importProgress').style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 5000);
+        }
+
+        // 仅导入历史记录
+        async function importHistoryOnly(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (!data.investments && !data.rebalances) {
+                    throw new Error('未找到历史记录数据');
+                }
+                
+                const stats = { investments: 0, rebalances: 0, errors: 0 };
+                
+                // 导入投资记录（合并模式）
+                if (data.investments && data.investments.length > 0) {
+                    const tx = db.transaction(['investments'], 'readwrite');
+                    const store = tx.objectStore('investments');
+                    
+                    // 获取现有记录的时间戳集合，避免重复
+                    const existingReq = store.getAll();
+                    const existing = await new Promise((resolve, reject) => {
+                        existingReq.onsuccess = () => resolve(existingReq.result);
+                        existingReq.onerror = reject;
+                    });
+                    const existingTimestamps = new Set(existing.map(i => i.timestamp));
+                    
+                    for (const item of data.investments) {
+                        if (existingTimestamps.has(item.timestamp)) continue; // 跳过重复
+                        
+                        try {
+                            const { id, ...newItem } = item;
+                            await new Promise((resolve, reject) => {
+                                const req = store.add(newItem);
+                                req.onsuccess = resolve;
+                                req.onerror = reject;
+                            });
+                            stats.investments++;
+                        } catch (e) {
+                            stats.errors++;
+                        }
+                    }
+                }
+                
+                // 导入再平衡记录（合并模式）
+                if (data.rebalances && data.rebalances.length > 0) {
+                    const tx = db.transaction(['rebalances'], 'readwrite');
+                    const store = tx.objectStore('rebalances');
+                    
+                    const existingReq = store.getAll();
+                    const existing = await new Promise((resolve, reject) => {
+                        existingReq.onsuccess = () => resolve(existingReq.result);
+                        existingReq.onerror = reject;
+                    });
+                    const existingTimestamps = new Set(existing.map(i => i.timestamp));
+                    
+                    for (const item of data.rebalances) {
+                        if (existingTimestamps.has(item.timestamp)) continue;
+                        
+                        try {
+                            const { id, ...newItem } = item;
+                            await new Promise((resolve, reject) => {
+                                const req = store.add(newItem);
+                                req.onsuccess = resolve;
+                                req.onerror = reject;
+                            });
+                            stats.rebalances++;
+                        } catch (e) {
+                            stats.errors++;
+                        }
+                    }
+                }
+                
+                showNotif('success', '✓ 历史记录导入成功', 
+                    `投资：${stats.investments}条，再平衡：${stats.rebalances}条，错误：${stats.errors}个`);
+                
+                updateDashboard();
+                loadHistory();
+                
+            } catch (error) {
+                showNotif('error', '✗ 导入失败', error.message);
+            }
+            
+            input.value = '';
         }
 
         // 投资功能
