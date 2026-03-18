@@ -2,12 +2,12 @@
   "name": "投资小助手-资金分配以及再平衡计算助手",
   "short_name": "invest",
   "description": "资金分配以及再平衡计算助手",
-  "start_url": "/invest/",                /* 重要：根据部署路径修改 */
+  "start_url": "/invest/",
   "display": "standalone",
-  "background_color": "#f5f5f5", /*白烟色#f5f5f5; 红色#FF0000; 安卓绿#4CAF50
+  "background_color": "#f5f5f5", 
   "theme_color": "#FF0000",
   "orientation": "portrait",
-  "scope": "/invest/",                     /* 重要：与 start_url 保持一致 */
+  "scope": "/invest/",
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%234CAF50' width='192' height='192' rx='20'/%3E%3Ctext x='96' y='120' font-size='80' text-anchor='middle' fill='white'%3EW%3C/text%3E%3C/svg%3E",
