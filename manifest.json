@@ -1,6 +1,6 @@
 {
   "name": "投资小助手-资金分配以及再平衡计算助手",
-  "short_name": "invest",
+  "short_name": "Invest",
   "description": "资金分配以及再平衡计算助手",
   "start_url": "/invest/",
   "display": "standalone",
