@@ -662,6 +662,15 @@
     </div>
 
     <script>
+        // 辅助函数：获取本地日期 YYYY-MM-DD (修复UTC时区问题)
+        function getLocalDateString() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // 数据定义 - 使用let以便动态添加
         let ASSETS = {
             '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
@@ -692,8 +701,9 @@
 
         // 初始化（增强错误处理）
         document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('investDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('rebalanceDate').value = new Date().toISOString().split('T')[0];
+            // 修复: 使用本地日期而非UTC日期
+            document.getElementById('investDate').value = getLocalDateString();
+            document.getElementById('rebalanceDate').value = getLocalDateString();
             
             // 加载本地存储的配置和自定义标的
             const saved = localStorage.getItem('portfolioConfig');
@@ -1824,8 +1834,8 @@
             request.onsuccess = () => {
                 const draft = request.result;
                 if (!draft) return;
-                
-                document.getElementById('investDate').value = draft.date || new Date().toISOString().split('T')[0];
+                // 修复: 使用本地日期作为后备默认值，避免UTC日期显示错误
+                document.getElementById('investDate').value = draft.date || getLocalDateString();
                 document.getElementById('investAmount').value = draft.amount || '';
                 document.getElementById('investNote').value = draft.note || '';
                 
@@ -2577,13 +2587,14 @@
                 showNotif('error', '✗ 无数据', '请先计算方案');
                 return;
             }
-            
+            // 修复: 文件名使用本地日期
+            const planDate = plan.date || getLocalDateString();
             const dataStr = JSON.stringify(plan, null, 2);
             const blob = new Blob([dataStr], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${type}_plan_${plan.date || new Date().toISOString().split('T')[0]}.json`;
+            a.download = `${type}_plan_${planDate}.json`;
             a.click();
             URL.revokeObjectURL(url);
             
@@ -2606,7 +2617,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `portfolio_history_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `portfolio_history_${getLocalDateString()}.json`;
             a.click();
             URL.revokeObjectURL(url);
             
@@ -2636,7 +2647,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `portfolio_config_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `portfolio_config_${getLocalDateString()}.json`;
             a.click();
             URL.revokeObjectURL(url);
             
@@ -2741,7 +2752,7 @@
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `portfolio_complete_backup_${new Date().toISOString().split('T')[0]}.json`;
+                            a.download = `portfolio_complete_backup_${getLocalDateString()}.json`;
                             a.click();
                             URL.revokeObjectURL(url);
                             
