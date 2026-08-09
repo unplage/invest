@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#0f172a">
     <title>智能资产配置器 Pro Max</title>
     <link rel="manifest" href="./manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* 完整样式（与之前一致，此处省略以节省篇幅，实际使用时需包含全部样式） */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -255,7 +256,23 @@
 
             <div class="card" id="todoCard" style="display: none;">
                 <div class="card-title">⚠️ 待办事项</div>
-                <div id="todoList" style="margin-top: 16px;"></div>
+                <div id="todoRebalance" style="margin-top: 16px;"></div>
+                <div id="todoSchedule" style="margin-top: 12px;"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📈 市场行情</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="marketLastUpdate" style="font-size: 0.75rem; color: var(--text-muted);">未更新</span>
+                        <button class="btn btn-secondary btn-small" onclick="refreshMarketData()">🔄 刷新</button>
+                    </div>
+                </div>
+                <div id="marketDataGrid" class="dashboard-grid" style="margin-bottom: 0;">
+                    <div class="empty-state" style="padding: 20px;">
+                        <div style="color: var(--text-muted); font-size: 0.875rem;">请在设置中配置API Key以获取实时行情</div>
+                    </div>
+                </div>
             </div>
 
             <div class="card">
@@ -286,6 +303,18 @@
                     <label>投资金额 (元) *</label>
                     <input type="number" id="investAmount" placeholder="例如：10000" min="0" step="0.01" required>
                     <div class="input-hint">建议定期定额投资，分散时间风险</div>
+                </div>
+
+                <div class="toggle-container" onclick="toggleInvestDetailMode()">
+                    <div class="toggle" id="investDetailToggle"></div>
+                    <span class="toggle-label">启用份额/单价模式（可选，用于精确追踪持仓成本）</span>
+                </div>
+
+                <div id="investDetailInputs" style="display: none;">
+                    <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 12px;">在此模式下，您可以为每个标的指定买入份额和单价，系统将自动计算金额。留空则按权重自动分配。</div>
+                        <div id="investDetailList"></div>
+                    </div>
                 </div>
 
                 <div class="input-group">
@@ -438,8 +467,10 @@
                 </div>
 
                 <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary btn-small" onclick="exportHistory()">📤 导出历史</button>
-                    <button class="btn btn-secondary btn-small" onclick="showStats()">📊 统计图表</button>
+                    <button class="btn btn-secondary btn-small" onclick="exportHistory()">📤 导出JSON</button>
+                    <button class="btn btn-secondary btn-small" onclick="exportToCSV()">📊 导出CSV</button>
+                    <button class="btn btn-secondary btn-small" onclick="exportToMarkdown()">📝 导出Markdown</button>
+                    <button class="btn btn-secondary btn-small" onclick="showStats()">📈 统计图表</button>
                 </div>
 
                 <div id="historyList" class="history-list">
@@ -533,6 +564,55 @@
                 <div id="assetList"></div>
             </div>
 
+            <!-- 定期投资计划 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📅 定期投资计划 (DCA)</div>
+                </div>
+                
+                <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>计划名称</label>
+                        <input type="text" id="scheduleName" placeholder="例如：每月定投">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>投资金额 (元)</label>
+                            <input type="number" id="scheduleAmount" placeholder="5000" min="0" step="0.01">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>投资频率</label>
+                            <select id="scheduleFrequency" style="width: 100%; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+                                <option value="weekly">每周</option>
+                                <option value="biweekly">每两周</option>
+                                <option value="monthly" selected>每月</option>
+                                <option value="quarterly">每季度</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>执行日</label>
+                            <input type="number" id="scheduleDay" placeholder="1-28" min="1" max="28" value="1">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>开始日期</label>
+                            <input type="date" id="scheduleStartDate">
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>备注</label>
+                        <input type="text" id="scheduleNote" placeholder="可选备注">
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="createSchedule()">➕ 创建计划</button>
+                </div>
+                
+                <div class="section-title" style="margin-bottom: 12px;">现有计划</div>
+                <div id="scheduleList">
+                    <div class="empty-state" style="padding: 20px;"><div style="color: var(--text-muted); font-size: 0.875rem;">暂无定期投资计划</div></div>
+                </div>
+            </div>
+
             <!-- 新增：数据导入功能 -->
             <div class="card">
                 <div class="card-header">
@@ -589,6 +669,42 @@
 
             <div class="card">
                 <div class="card-title">⚙️ 应用设置</div>
+
+                <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 12px;">📈 行情API设置</div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>API服务商</label>
+                        <select id="apiProvider" style="width: 100%; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+                            <option value="alphavantage">Alpha Vantage (推荐)</option>
+                            <option value="finnhub">Finnhub</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>API Key (免费申请)</label>
+                        <div style="position: relative;">
+                            <input type="password" id="apiKey" placeholder="输入API Key" style="width: 100%; padding-right: 40px;">
+                            <button onclick="togglePasswordVisibility('apiKey')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">&#x1F441;</button>
+                        </div>
+                        <div class="input-hint">Alpha Vantage: alphavantage.co/support/#api-key | Finnhub: finnhub.io</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-primary btn-small" onclick="saveApiSettings()">保存</button>
+                        <button class="btn btn-secondary btn-small" onclick="testApiConnection()">测试连接</button>
+                    </div>
+                </div>
+
+                <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 12px;">📊 手动添加行情标的</div>
+                    <div class="input-hint" style="margin-bottom: 12px;">添加自定义股票/ETF代码（如 AAPL、TSLA、BTC-USD 等），将显示在仪表盘行情区域</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="text" id="newSymbolCode" placeholder="代码（如 AAPL）" style="flex: 1; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+                        <input type="text" id="newSymbolName" placeholder="名称（如 苹果）" style="flex: 1; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+                        <button class="btn btn-primary btn-small" onclick="addCustomSymbol()">➕ 添加</button>
+                    </div>
+                    <div id="customSymbolList">
+                        <div class="empty-state" style="padding: 12px; font-size: 0.875rem;">暂无自定义标的</div>
+                    </div>
+                </div>
                 
                 <div class="config-item">
                     <div class="config-info">
@@ -632,6 +748,38 @@
                         <button class="btn btn-danger btn-small" onclick="clearAllData()" style="margin-left: 8px;">🗑 清空数据</button>
                     </div>
                 </div>
+                
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">密码保护</div>
+                        <div class="config-detail">设置密码后，每次打开应用需要输入密码</div>
+                    </div>
+                    <div class="config-input" style="flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative;">
+                                <input type="password" id="appPassword" placeholder="输入密码" style="width: 120px; padding: 8px 12px; font-size: 0.875rem;">
+                                <button onclick="togglePasswordVisibility('appPassword')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.875rem;">👁</button>
+                            </div>
+                            <button class="btn btn-primary btn-small" onclick="handleSetPassword()">设置密码</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-small" onclick="handleClearPassword()">清除密码</button>
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center;">
+                                ${needsAuth() ? '✓ 已启用' : '未启用'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-name">操作日志</div>
+                        <div class="config-detail">查看所有数据变更的历史记录</div>
+                    </div>
+                    <div class="config-input">
+                        <button class="btn btn-secondary btn-small" onclick="showAuditLogs()">📋 查看日志</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -644,6 +792,21 @@
                 <button onclick="closeDraftModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">×</button>
             </div>
             <div id="draftList"></div>
+        </div>
+    </div>
+
+    <!-- 编辑投资记录模态框 -->
+    <div id="editModal" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
+        <div class="modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h3 style="font-size: 1.5rem; font-weight: 700;" id="editModalTitle">编辑记录</h3>
+                <button onclick="closeEditModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="editModalContent"></div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" onclick="saveEdit()" style="flex: 1;">✓ 保存修改</button>
+                <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+            </div>
         </div>
     </div>
 
@@ -662,6 +825,8 @@
     </div>
 
     <script>
+        // ==================== 辅助函数 ====================
+        
         // 辅助函数：获取本地日期 YYYY-MM-DD (修复UTC时区问题)
         function getLocalDateString() {
             const d = new Date();
@@ -670,37 +835,127 @@
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-
-        // 数据定义 - 使用let以便动态添加
-        let ASSETS = {
-            '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
-            '纳斯达克100': { code: 'QQQ', color: '#8b5cf6', region: 'US', desc: '美国科技股' },
-            '日经225': { code: 'EWJ', color: '#ec4899', region: 'APAC', desc: '日本股市' },
-            '德国DAX': { code: 'EWG', color: '#f43f5e', region: 'EU', desc: '德国股市' },
-            '印度Nifty50': { code: 'INDA', color: '#f59e0b', region: 'APAC', desc: '印度股市' },
-            '越南VNIndex': { code: 'VNM', color: '#10b981', region: 'APAC', desc: '越南股市' },
-            'REITs': { code: 'VNQ', color: '#3b82f6', region: 'US', desc: '房地产信托' },
-            '中债备用': { code: 'CHBond', color: '#64748b', region: 'CN', desc: '中国债券' }
-        };
-
-        const PRESETS = {
-            default: { '标普500': 0.25, '纳斯达克100': 0.15, '日经225': 0.15, '德国DAX': 0.15, '印度Nifty50': 0.10, '越南VNIndex': 0.05, 'REITs': 0.10, '中债备用': 0.05 },
-            conservative: { '标普500': 0.15, '纳斯达克100': 0.10, '日经225': 0.10, '德国DAX': 0.10, '印度Nifty50': 0.05, '越南VNIndex': 0.05, 'REITs': 0.15, '中债备用': 0.30 },
-            aggressive: { '标普500': 0.35, '纳斯达克100': 0.25, '日经225': 0.10, '德国DAX': 0.05, '印度Nifty50': 0.10, '越南VNIndex': 0.10, 'REITs': 0.05, '中债备用': 0.00 },
-            equal: { '标普500': 0.125, '纳斯达克100': 0.125, '日经225': 0.125, '德国DAX': 0.125, '印度Nifty50': 0.125, '越南VNIndex': 0.125, 'REITs': 0.125, '中债备用': 0.125 }
-        };
-
-        let currentWeights = {};
-        let tempInvestWeights = null;
-        let tempRebalanceWeights = null;
-        let db = null;
-        let lastInvestPlan = null;
-        let lastRebalancePlan = null;
-        let currentHistoryFilter = 'all';
-        let allHistoryData = [];
-
-        // 初始化（增强错误处理）
-        document.addEventListener('DOMContentLoaded', async () => {
+        
+        // ==================== 审计日志 ====================
+        
+        // 记录审计日志
+        async function logAudit(action, storeName, recordId, before = null, after = null) {
+            if (!db) return;
+            try {
+                const tx = db.transaction(['auditLog'], 'readwrite');
+                const store = tx.objectStore('auditLog');
+                await new Promise((resolve, reject) => {
+                    const req = store.add({
+                        timestamp: Date.now(),
+                        action: action, // 'create', 'update', 'delete'
+                        store: storeName,
+                        recordId: recordId,
+                        before: before,
+                        after: after,
+                    });
+                    req.onsuccess = resolve;
+                    req.onerror = () => reject(new Error('审计日志写入失败'));
+                });
+            } catch (e) {
+                console.warn('Audit log failed:', e);
+            }
+        }
+        
+        // 获取审计日志
+        async function getAuditLogs(limit = 100) {
+            if (!db) return [];
+            return new Promise((resolve) => {
+                const tx = db.transaction(['auditLog'], 'readonly');
+                const store = tx.objectStore('auditLog');
+                const req = store.getAll();
+                req.onsuccess = () => {
+                    const logs = req.result.sort((a, b) => b.timestamp - a.timestamp);
+                    resolve(logs.slice(0, limit));
+                };
+                req.onerror = () => resolve([]);
+            });
+        }
+        
+        // ==================== 密码保护 ====================
+        
+        // SHA-256 哈希函数（浏览器原生）
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashBufferToHex(hashArray);
+        }
+        
+        function hashBufferToHex(hashArray) {
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        // 设置密码
+        async function setPassword(password) {
+            const hash = await sha256(password);
+            localStorage.setItem('app_password_hash', hash);
+            showNotif('success', '✓ 密码已设置', '下次打开应用需要输入密码');
+        }
+        
+        // 清除密码
+        function clearPassword() {
+            localStorage.removeItem('app_password_hash');
+            showNotif('info', '✓ 密码已清除', '应用已取消密码保护');
+        }
+        
+        // 验证密码
+        async function verifyPassword(input) {
+            const storedHash = localStorage.getItem('app_password_hash');
+            if (!storedHash) return true; // 未设置密码，直接通过
+            const inputHash = await sha256(input);
+            return inputHash === storedHash;
+        }
+        
+        // 检查是否需要认证
+        function needsAuth() {
+            return !!localStorage.getItem('app_password_hash');
+        }
+        
+        // 切换密码可见性
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+        
+        // 处理密码验证
+        async function handleAuth() {
+            const password = document.getElementById('authPassword').value;
+            const errorEl = document.getElementById('authError');
+            
+            if (!password) {
+                errorEl.textContent = '请输入密码';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            const ok = await verifyPassword(password);
+            if (ok) {
+                const overlay = document.getElementById('authOverlay');
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    overlay.remove();
+                    initApp(); // 继续初始化应用
+                }, 300);
+            } else {
+                errorEl.textContent = '密码错误，请重试';
+                errorEl.style.display = 'block';
+                document.getElementById('authPassword').value = '';
+                document.getElementById('authPassword').focus();
+            }
+        }
+        
+        // 应用初始化（密码验证通过后调用）
+        async function initApp() {
             // 修复: 使用本地日期而非UTC日期
             document.getElementById('investDate').value = getLocalDateString();
             document.getElementById('rebalanceDate').value = getLocalDateString();
@@ -743,6 +998,15 @@
                 loadSavedSchemes();
                 renderAssetList();
                 updateDashboard();
+                
+                // 请求通知权限
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+                
+                // 检查到期的定期投资计划
+                setTimeout(() => checkDueSchedules(), 2000);
+                
                 showNotif('success', '✓ 应用已就绪', '数据加载完成');
             } catch (e) {
                 console.error('Fatal initialization error:', e);
@@ -761,8 +1025,67 @@
                 `;
                 showNotif('error', '✗ 初始化失败', e.message);
             }
-        });
+        }
+        
+        // 数据定义 - 使用let以便动态添加
+        let ASSETS = {
+            '标普500': { code: 'SPY', color: '#6366f1', region: 'US', desc: '美国大盘股' },
+            '纳斯达克100': { code: 'QQQ', color: '#8b5cf6', region: 'US', desc: '美国科技股' },
+            '日经225': { code: 'EWJ', color: '#ec4899', region: 'APAC', desc: '日本股市' },
+            '德国DAX': { code: 'EWG', color: '#f43f5e', region: 'EU', desc: '德国股市' },
+            '印度Nifty50': { code: 'INDA', color: '#f59e0b', region: 'APAC', desc: '印度股市' },
+            '越南VNIndex': { code: 'VNM', color: '#10b981', region: 'APAC', desc: '越南股市' },
+            'REITs': { code: 'VNQ', color: '#3b82f6', region: 'US', desc: '房地产信托' },
+            '中债备用': { code: 'CHBond', color: '#64748b', region: 'CN', desc: '中国债券' }
+        };
 
+        const PRESETS = {
+            default: { '标普500': 0.25, '纳斯达克100': 0.15, '日经225': 0.15, '德国DAX': 0.15, '印度Nifty50': 0.10, '越南VNIndex': 0.05, 'REITs': 0.10, '中债备用': 0.05 },
+            conservative: { '标普500': 0.15, '纳斯达克100': 0.10, '日经225': 0.10, '德国DAX': 0.10, '印度Nifty50': 0.05, '越南VNIndex': 0.05, 'REITs': 0.15, '中债备用': 0.30 },
+            aggressive: { '标普500': 0.35, '纳斯达克100': 0.25, '日经225': 0.10, '德国DAX': 0.05, '印度Nifty50': 0.10, '越南VNIndex': 0.10, 'REITs': 0.05, '中债备用': 0.00 },
+            equal: { '标普500': 0.125, '纳斯达克100': 0.125, '日经225': 0.125, '德国DAX': 0.125, '印度Nifty50': 0.125, '越南VNIndex': 0.125, 'REITs': 0.125, '中债备用': 0.125 }
+        };
+
+        let currentWeights = {};
+        let tempInvestWeights = null;
+        let tempRebalanceWeights = null;
+        let db = null;
+        let lastInvestPlan = null;
+        let lastRebalancePlan = null;
+        let currentHistoryFilter = 'all';
+        let allHistoryData = [];
+
+        // 初始化（增强错误处理）
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 检查密码保护
+            if (needsAuth()) {
+                const authOverlay = document.createElement('div');
+                authOverlay.id = 'authOverlay';
+                authOverlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px;';
+                authOverlay.innerHTML = `
+                    <div style="text-align: center;">
+                        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">智能资产配置器</h2>
+                        <p style="color: var(--text-muted); font-size: 0.875rem;">请输入密码以继续</p>
+                    </div>
+                    <div style="position: relative; width: 280px;">
+                        <input type="password" id="authPassword" placeholder="输入密码" 
+                               style="width: 100%; padding: 14px 48px 14px 16px; font-size: 1rem; background: var(--glass); border: 2px solid var(--border); border-radius: 12px; color: var(--text);"
+                               onkeydown="if(event.key==='Enter') handleAuth()">
+                        <button onclick="togglePasswordVisibility('authPassword')" 
+                                style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem;">👁</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="handleAuth()" style="width: 280px;">验证密码</button>
+                    <div id="authError" style="color: var(--danger); font-size: 0.875rem; display: none;"></div>
+                `;
+                document.body.appendChild(authOverlay);
+                document.getElementById('authPassword').focus();
+                return; // 阻止后续初始化
+            }
+            
+            // 无需密码保护，直接初始化
+            initApp();
+        });
+        
         // 设置拖拽导入
         function setupDragAndDrop() {
             const dropZone = document.getElementById('fullImportDropZone');
@@ -801,63 +1124,89 @@
         // 智能数据库初始化：先获取当前版本，再决定是否需要升级
         function initDB() {
             return new Promise((resolve, reject) => {
-                // 第一步：尝试不指定版本打开数据库，获取当前版本和存储列表
-                const request = indexedDB.open('PortfolioDB');
+                const DB_VERSION = 3; // 升级版本号以触发schema更新
+                
+                const request = indexedDB.open('PortfolioDB', DB_VERSION);
                 
                 request.onerror = () => {
-                    // 如果连不带版本的打开都失败，可能是权限问题
                     reject(new Error(request.error?.message || '无法打开数据库，请检查浏览器设置'));
                 };
                 
                 request.onsuccess = (event) => {
                     const database = event.target.result;
-                    const currentVersion = database.version;
-                    const requiredStores = ['investments', 'rebalances', 'drafts', 'schemes'];
+                    console.log('Database ready with version', database.version);
+                    resolve(database);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    const newDb = e.target.result;
+                    const oldVersion = e.oldVersion;
                     
-                    // 检查是否所有存储都存在
-                    const missingStores = requiredStores.filter(store => !database.objectStoreNames.contains(store));
+                    console.log('Upgrading DB from version', oldVersion, 'to', DB_VERSION);
                     
-                    if (missingStores.length === 0) {
-                        // 一切齐全，直接返回
-                        console.log('Database ready with version', currentVersion);
-                        resolve(database);
-                    } else {
-                        // 缺少存储，需要升级
-                        console.log('Missing stores, upgrading from version', currentVersion, 'to', currentVersion + 1);
-                        database.close(); // 关闭当前连接
-                        
-                        // 以更高版本打开以触发升级
-                        const upgradeRequest = indexedDB.open('PortfolioDB', currentVersion + 1);
-                        
-                        upgradeRequest.onerror = () => {
-                            reject(new Error(upgradeRequest.error?.message || '升级数据库失败'));
-                        };
-                        
-                        upgradeRequest.onsuccess = (e) => {
-                            console.log('Upgrade successful, new version:', e.target.result.version);
-                            resolve(e.target.result);
-                        };
-                        
-                        upgradeRequest.onupgradeneeded = (e) => {
-                            const newDb = e.target.result;
-                            // 创建缺失的存储
-                            if (!newDb.objectStoreNames.contains('investments')) {
-                                newDb.createObjectStore('investments', {keyPath: 'id', autoIncrement: true});
-                                console.log('Created investments store during upgrade');
+                    // ---- v0 → v1: 创建基础store ----
+                    if (oldVersion < 1) {
+                        if (!newDb.objectStoreNames.contains('investments')) {
+                            newDb.createObjectStore('investments', {keyPath: 'id', autoIncrement: true});
+                        }
+                        if (!newDb.objectStoreNames.contains('rebalances')) {
+                            newDb.createObjectStore('rebalances', {keyPath: 'id', autoIncrement: true});
+                        }
+                        if (!newDb.objectStoreNames.contains('drafts')) {
+                            newDb.createObjectStore('drafts', {keyPath: 'id', autoIncrement: true});
+                        }
+                        if (!newDb.objectStoreNames.contains('schemes')) {
+                            newDb.createObjectStore('schemes', {keyPath: 'name'});
+                        }
+                    }
+                    
+                    // ---- v1 → v2: 添加审计日志和定期投资store ----
+                    if (oldVersion < 2) {
+                        if (!newDb.objectStoreNames.contains('auditLog')) {
+                            const auditStore = newDb.createObjectStore('auditLog', {keyPath: 'id', autoIncrement: true});
+                            auditStore.createIndex('timestamp', 'timestamp', {unique: false});
+                            auditStore.createIndex('store', 'store', {unique: false});
+                            auditStore.createIndex('action', 'action', {unique: false});
+                        }
+                        if (!newDb.objectStoreNames.contains('schedules')) {
+                            newDb.createObjectStore('schedules', {keyPath: 'id', autoIncrement: true});
+                        }
+                    }
+                    
+                    // ---- v2 → v3: 为investments和rebalances添加索引 ----
+                    if (oldVersion < 3) {
+                        try {
+                            // 为investments添加索引（如果store已存在但没有索引）
+                            if (newDb.objectStoreNames.contains('investments')) {
+                                const invStore = e.target.transaction.objectStore('investments');
+                                if (!invStore.indexNames.contains('date')) {
+                                    invStore.createIndex('date', 'date', {unique: false});
+                                    console.log('Added date index to investments');
+                                }
+                                if (!invStore.indexNames.contains('timestamp')) {
+                                    invStore.createIndex('timestamp', 'timestamp', {unique: false});
+                                    console.log('Added timestamp index to investments');
+                                }
                             }
-                            if (!newDb.objectStoreNames.contains('rebalances')) {
-                                newDb.createObjectStore('rebalances', {keyPath: 'id', autoIncrement: true});
-                                console.log('Created rebalances store during upgrade');
+                        } catch(err) {
+                            console.warn('Could not add indexes to investments:', err);
+                        }
+                        try {
+                            // 为rebalances添加索引
+                            if (newDb.objectStoreNames.contains('rebalances')) {
+                                const rebStore = e.target.transaction.objectStore('rebalances');
+                                if (!rebStore.indexNames.contains('date')) {
+                                    rebStore.createIndex('date', 'date', {unique: false});
+                                    console.log('Added date index to rebalances');
+                                }
+                                if (!rebStore.indexNames.contains('timestamp')) {
+                                    rebStore.createIndex('timestamp', 'timestamp', {unique: false});
+                                    console.log('Added timestamp index to rebalances');
+                                }
                             }
-                            if (!newDb.objectStoreNames.contains('drafts')) {
-                                newDb.createObjectStore('drafts', {keyPath: 'id', autoIncrement: true});
-                                console.log('Created drafts store during upgrade');
-                            }
-                            if (!newDb.objectStoreNames.contains('schemes')) {
-                                newDb.createObjectStore('schemes', {keyPath: 'name'});
-                                console.log('Created schemes store during upgrade');
-                            }
-                        };
+                        } catch(err) {
+                            console.warn('Could not add indexes to rebalances:', err);
+                        }
                     }
                 };
             });
@@ -891,6 +1240,8 @@
                 initWeightEditors();
                 loadSavedSchemes();
                 renderAssetList();
+                loadSchedules();
+                renderCustomSymbols();
             }
         }
 
@@ -898,6 +1249,74 @@
             switchTab('invest');
             window.scrollTo({top: 0, behavior: 'smooth'});
             document.getElementById('investAmount').focus();
+        }
+        
+        // ==================== 份额/单价模式 ====================
+        
+        let investDetailMode = false;
+        let investDetailData = {}; // { assetName: { shares: 0, unitPrice: 0 } }
+        
+        function toggleInvestDetailMode() {
+            const toggle = document.getElementById('investDetailToggle');
+            const panel = document.getElementById('investDetailInputs');
+            investDetailMode = !investDetailMode;
+            
+            if (investDetailMode) {
+                toggle.classList.add('active');
+                panel.style.display = 'block';
+                renderInvestDetailList();
+            } else {
+                toggle.classList.remove('active');
+                panel.style.display = 'none';
+                investDetailData = {};
+            }
+        }
+        
+        function renderInvestDetailList() {
+            const container = document.getElementById('investDetailList');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            Object.entries(ASSETS).forEach(([name, info]) => {
+                if (!investDetailData[name]) {
+                    investDetailData[name] = { shares: 0, unitPrice: 0 };
+                }
+                const item = document.createElement('div');
+                item.className = 'config-item';
+                item.style.marginBottom = '8px';
+                item.innerHTML = `
+                    <div class="config-info">
+                        <div class="config-color" style="background: ${info.color}"></div>
+                        <div>
+                            <div class="config-name">${name} <span style="color: var(--text-muted); font-size: 0.875rem;">(${info.code})</span></div>
+                        </div>
+                    </div>
+                    <div class="config-input" style="gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">份额:</span>
+                            <input type="number" class="weight-input" style="width: 70px;" step="0.01" min="0"
+                                   value="${investDetailData[name].shares || ''}" 
+                                   onchange="updateInvestDetail('${name}', 'shares', this.value)"
+                                   id="detail_shares_${name}" placeholder="0">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">单价:</span>
+                            <input type="number" class="weight-input" style="width: 70px;" step="0.01" min="0"
+                                   value="${investDetailData[name].unitPrice || ''}" 
+                                   onchange="updateInvestDetail('${name}', 'unitPrice', this.value)"
+                                   id="detail_price_${name}" placeholder="0">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function updateInvestDetail(assetName, field, value) {
+            if (!investDetailData[assetName]) {
+                investDetailData[assetName] = { shares: 0, unitPrice: 0 };
+            }
+            investDetailData[assetName][field] = parseFloat(value) || 0;
         }
 
         // 初始化权重编辑器
@@ -1535,60 +1954,81 @@
                 
                 // 导入投资记录（合并模式）
                 if (data.investments && data.investments.length > 0) {
-                    const tx = db.transaction(['investments'], 'readwrite');
-                    const store = tx.objectStore('investments');
-                    
-                    // 获取现有记录的时间戳集合，避免重复
-                    const existingReq = store.getAll();
-                    const existing = await new Promise((resolve, reject) => {
-                        existingReq.onsuccess = () => resolve(existingReq.result);
-                        existingReq.onerror = reject;
+                    // 先在只读事务中获取已有记录的时间戳
+                    const existingTimestamps = await new Promise((resolve, reject) => {
+                        const tx = db.transaction(['investments'], 'readonly');
+                        const store = tx.objectStore('investments');
+                        const req = store.getAll();
+                        req.onsuccess = () => {
+                            resolve(new Set(req.result.map(i => i.timestamp)));
+                        };
+                        req.onerror = () => reject(new Error('读取已有投资记录失败'));
                     });
-                    const existingTimestamps = new Set(existing.map(i => i.timestamp));
                     
-                    for (const item of data.investments) {
-                        if (existingTimestamps.has(item.timestamp)) continue; // 跳过重复
-                        
-                        try {
-                            const { id, ...newItem } = item;
-                            await new Promise((resolve, reject) => {
-                                const req = store.add(newItem);
-                                req.onsuccess = resolve;
-                                req.onerror = reject;
+                    // 再在读写事务中添加新记录
+                    const newItems = data.investments.filter(item => !existingTimestamps.has(item.timestamp));
+                    
+                    if (newItems.length > 0) {
+                        await new Promise((resolve, reject) => {
+                            const tx = db.transaction(['investments'], 'readwrite');
+                            const store = tx.objectStore('investments');
+                            
+                            newItems.forEach(item => {
+                                try {
+                                    const { id, ...newItem } = item;
+                                    store.add(newItem);
+                                    stats.investments++;
+                                } catch (e) {
+                                    stats.errors++;
+                                }
                             });
-                            stats.investments++;
-                        } catch (e) {
-                            stats.errors++;
-                        }
+                            
+                            tx.oncomplete = () => resolve();
+                            tx.onerror = () => {
+                                stats.errors++;
+                                resolve(); // 不阻断后续流程
+                            };
+                        });
                     }
                 }
                 
                 // 导入再平衡记录（合并模式）
                 if (data.rebalances && data.rebalances.length > 0) {
-                    const tx = db.transaction(['rebalances'], 'readwrite');
-                    const store = tx.objectStore('rebalances');
-                    
-                    const existingReq = store.getAll();
-                    const existing = await new Promise((resolve, reject) => {
-                        existingReq.onsuccess = () => resolve(existingReq.result);
-                        existingReq.onerror = reject;
+                    // 先在只读事务中获取已有记录的时间戳
+                    const existingTimestamps = await new Promise((resolve, reject) => {
+                        const tx = db.transaction(['rebalances'], 'readonly');
+                        const store = tx.objectStore('rebalances');
+                        const req = store.getAll();
+                        req.onsuccess = () => {
+                            resolve(new Set(req.result.map(i => i.timestamp)));
+                        };
+                        req.onerror = () => reject(new Error('读取已有再平衡记录失败'));
                     });
-                    const existingTimestamps = new Set(existing.map(i => i.timestamp));
                     
-                    for (const item of data.rebalances) {
-                        if (existingTimestamps.has(item.timestamp)) continue;
-                        
-                        try {
-                            const { id, ...newItem } = item;
-                            await new Promise((resolve, reject) => {
-                                const req = store.add(newItem);
-                                req.onsuccess = resolve;
-                                req.onerror = reject;
+                    // 再在读写事务中添加新记录
+                    const newItems = data.rebalances.filter(item => !existingTimestamps.has(item.timestamp));
+                    
+                    if (newItems.length > 0) {
+                        await new Promise((resolve, reject) => {
+                            const tx = db.transaction(['rebalances'], 'readwrite');
+                            const store = tx.objectStore('rebalances');
+                            
+                            newItems.forEach(item => {
+                                try {
+                                    const { id, ...newItem } = item;
+                                    store.add(newItem);
+                                    stats.rebalances++;
+                                } catch (e) {
+                                    stats.errors++;
+                                }
                             });
-                            stats.rebalances++;
-                        } catch (e) {
-                            stats.errors++;
-                        }
+                            
+                            tx.oncomplete = () => resolve();
+                            tx.onerror = () => {
+                                stats.errors++;
+                                resolve();
+                            };
+                        });
                     }
                 }
                 
@@ -1630,9 +2070,34 @@
             grid.innerHTML = '';
 
             Object.entries(weights).forEach(([name, weight]) => {
-                if (weight <= 0) return; // 跳过权重为0的标的
-                const alloc = amount * weight;
-                allocations[name] = alloc;
+                if (weight <= 0) return;
+                
+                let allocAmount = amount * weight;
+                let shares = 0;
+                let unitPrice = 0;
+                
+                // 如果启用了份额/单价模式且有输入，使用指定的值
+                if (investDetailMode && investDetailData[name]) {
+                    const detail = investDetailData[name];
+                    if (detail.shares > 0 && detail.unitPrice > 0) {
+                        shares = detail.shares;
+                        unitPrice = detail.unitPrice;
+                        allocAmount = shares * unitPrice;
+                    } else if (detail.shares > 0) {
+                        shares = detail.shares;
+                        unitPrice = allocAmount / shares;
+                    } else if (detail.unitPrice > 0) {
+                        unitPrice = detail.unitPrice;
+                        shares = allocAmount / unitPrice;
+                    }
+                }
+                
+                allocations[name] = {
+                    amount: allocAmount,
+                    shares: shares,
+                    unitPrice: unitPrice,
+                    weight: weight,
+                };
                 
                 const card = document.createElement('div');
                 card.className = 'rebalance-card';
@@ -1641,7 +2106,8 @@
                         <div class="rebalance-name">${name}</div>
                         <div class="rebalance-action buy">买入</div>
                     </div>
-                    <div class="rebalance-value">¥${alloc.toFixed(2)}</div>
+                    <div class="rebalance-value">¥${allocAmount.toFixed(2)}</div>
+                    ${shares > 0 ? `<div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 4px;">${shares.toFixed(2)}份 × ¥${unitPrice.toFixed(2)}</div>` : ''}
                     <div class="rebalance-bar">
                         <div class="rebalance-progress target animate-fill" style="width: ${weight * 100}%; background: ${ASSETS[name].color}"></div>
                     </div>
@@ -1663,6 +2129,7 @@
                 weights: JSON.parse(JSON.stringify(weights)),
                 note: note,
                 isCustom: useCustom,
+                isDetailMode: investDetailMode,
                 timestamp: Date.now()
             };
             
@@ -1711,6 +2178,11 @@
                 const request = store.add(lastInvestPlan);
                 
                 request.onsuccess = () => {
+                    const newId = request.result;
+                    
+                    // 记录审计日志
+                    logAudit('create', 'investments', newId, null, lastInvestPlan);
+                    
                     if (document.getElementById('autoBackupToggle').classList.contains('active')) {
                         autoExport();
                     }
@@ -1724,6 +2196,14 @@
                     document.getElementById('investWeightPanel').style.display = 'none';
                     tempInvestWeights = null;
                     lastInvestPlan = null;
+                    
+                    // 重置份额/单价模式
+                    if (investDetailMode) {
+                        investDetailMode = false;
+                        document.getElementById('investDetailToggle').classList.remove('active');
+                        document.getElementById('investDetailInputs').style.display = 'none';
+                        investDetailData = {};
+                    }
                     
                     updateDashboard();
                 };
@@ -2067,6 +2547,11 @@
                 const request = store.add(lastRebalancePlan);
                 
                 request.onsuccess = () => {
+                    const newId = request.result;
+                    
+                    // 记录审计日志
+                    logAudit('create', 'rebalances', newId, null, lastRebalancePlan);
+                    
                     if (document.getElementById('autoBackupToggle').classList.contains('active')) {
                         autoExport();
                     }
@@ -2161,8 +2646,10 @@
                 investments;
             
             afterLastRebalance.forEach(inv => {
-                Object.entries(inv.allocations).forEach(([name, amount]) => {
-                    currentHoldings[name] = (currentHoldings[name] || 0) + amount;
+                Object.entries(inv.allocations).forEach(([name, alloc]) => {
+                    // 兼容新旧数据格式：旧格式为纯数字，新格式为对象 {amount, shares, unitPrice, weight}
+                    const value = typeof alloc === 'object' && alloc !== null ? alloc.amount : alloc;
+                    currentHoldings[name] = (currentHoldings[name] || 0) + (value || 0);
                 });
             });
             
@@ -2193,8 +2680,8 @@
                 document.getElementById('driftTrend').className = 'stat-trend trend-down';
                 
                 document.getElementById('todoCard').style.display = 'block';
-                document.getElementById('todoList').innerHTML = `
-                    <div style="padding: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border-left: 4px solid var(--warning);">
+                document.getElementById('todoRebalance').innerHTML = `
+                    <div style="padding: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border-left: 4px solid var(--warning); margin-bottom: 12px;">
                         <div style="font-weight: 600; margin-bottom: 8px; color: var(--warning);">⚠️ 再平衡提醒</div>
                         <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 12px;">
                             您的组合偏离度已达${(maxDrift*100).toFixed(1)}%，超过设定阈值${(threshold*100).toFixed(1)}%
@@ -2206,11 +2693,19 @@
                 driftEl.style.color = 'var(--success)';
                 document.getElementById('driftTrend').textContent = '正常';
                 document.getElementById('driftTrend').className = 'stat-trend trend-up';
-                document.getElementById('todoCard').style.display = 'none';
+                document.getElementById('todoRebalance').innerHTML = '';
             }
+            
+            // 检查todoCard是否需要显示（有任一提醒则显示）
+            const hasRebalanceTodo = document.getElementById('todoRebalance').innerHTML.trim() !== '';
+            const hasScheduleTodo = document.getElementById('todoSchedule').innerHTML.trim() !== '';
+            document.getElementById('todoCard').style.display = (hasRebalanceTodo || hasScheduleTodo) ? 'block' : 'none';
             
             renderPortfolioChart(currentHoldings, totalAssets);
             renderRecentActivity(investments, rebalances);
+            
+            // 自动刷新市场行情（仅当缓存超过1小时）
+            autoRefreshMarket();
         }
 
         function renderPortfolioChart(holdings, total) {
@@ -2299,161 +2794,391 @@
             `).join('');
         }
 
-        function refreshDashboard() {
-            updateDashboard();
-            showNotif('success', '✓ 已刷新', '仪表盘数据已更新');
+        // ==================== 实时行情 API ====================
+        
+        let marketRefreshTimer = null;
+        
+        // 全球主要指数/ETF映射
+        const MARKET_SYMBOLS = {
+            'SPY': { name: 'S&P 500', market: 'US' },
+            'QQQ': { name: 'NASDAQ 100', market: 'US' },
+            'DIA': { name: 'Dow Jones', market: 'US' },
+            'EWJ': { name: 'Nikkei 225', market: 'JP' },
+            'EWG': { name: 'DAX', market: 'DE' },
+            'EWU': { name: 'FTSE 100', market: 'UK' },
+            'EWH': { name: 'Hang Seng', market: 'HK' },
+            'INDA': { name: 'India Nifty', market: 'IN' },
+            'VNM': { name: 'Vietnam', market: 'VN' },
+            'VNQ': { name: 'REITs', market: 'US' },
+            'VWO': { name: 'MSCI EM', market: 'EM' },
+            'BND': { name: 'US Bond', market: 'US' },
+        };
+        
+        // 获取API设置
+        function getApiSettings() {
+            const saved = localStorage.getItem('portfolioConfig');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    return {
+                        provider: config.apiProvider || 'alphavantage',
+                        apiKey: config.apiKey || '',
+                    };
+                } catch(e) {}
+            }
+            return { provider: 'alphavantage', apiKey: '' };
         }
-
-        // 分析功能
-        function updateAnalysis() {
-            if (!checkDb()) return;
-            const period = document.getElementById('analysisPeriod').value;
+        
+        // 保存API设置
+        function saveApiSettings() {
+            const provider = document.getElementById('apiProvider').value;
+            const apiKey = document.getElementById('apiKey').value.trim();
             
-            const tx1 = db.transaction(['investments'], 'readonly');
-            const invStore = tx1.objectStore('investments');
-            const invReq = invStore.getAll();
+            const saved = localStorage.getItem('portfolioConfig');
+            let config = {};
+            if (saved) {
+                try { config = JSON.parse(saved); } catch(e) {}
+            }
+            config.apiProvider = provider;
+            config.apiKey = apiKey;
+            localStorage.setItem('portfolioConfig', JSON.stringify(config));
             
-            invReq.onsuccess = () => {
-                const investments = invReq.result;
-                
-                const tx2 = db.transaction(['rebalances'], 'readonly');
-                const rebStore = tx2.objectStore('rebalances');
-                const rebReq = rebStore.getAll();
-                
-                rebReq.onsuccess = () => {
-                    const rebalances = rebReq.result;
-                    renderAnalysis(investments, rebalances, period);
-                };
-            };
+            showNotif('success', '✓ 已保存', 'API设置已更新');
         }
-
-        function renderAnalysis(investments, rebalances, period) {
-            if (investments.length === 0) {
-                document.getElementById('analysisContent').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📈</div>
-                        <div>数据不足，无法生成分析报告</div>
-                        <small style="color: var(--text-muted); display: block; margin-top: 8px;">请至少完成一次投资操作</small>
-                    </div>
-                `;
+        
+        // 获取自定义行情标的
+        function getCustomSymbols() {
+            const saved = localStorage.getItem('portfolioConfig');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    return config.customSymbols || {};
+                } catch(e) {}
+            }
+            return {};
+        }
+        
+        // 保存自定义行情标的
+        function saveCustomSymbols(symbols) {
+            const saved = localStorage.getItem('portfolioConfig');
+            let config = {};
+            if (saved) {
+                try { config = JSON.parse(saved); } catch(e) {}
+            }
+            config.customSymbols = symbols;
+            localStorage.setItem('portfolioConfig', JSON.stringify(config));
+        }
+        
+        // 添加自定义行情标的
+        function addCustomSymbol() {
+            const code = document.getElementById('newSymbolCode').value.trim().toUpperCase();
+            const name = document.getElementById('newSymbolName').value.trim();
+            
+            if (!code || !name) {
+                showNotif('error', '✗ 输入错误', '请填写代码和名称');
                 return;
             }
             
-            const now = Date.now();
-            const filters = {
-                month: 30 * 24 * 60 * 60 * 1000,
-                quarter: 90 * 24 * 60 * 60 * 1000,
-                year: 365 * 24 * 60 * 60 * 1000
-            };
+            const symbols = getCustomSymbols();
+            if (symbols[code]) {
+                showNotif('error', '✗ 已存在', `标的 ${code} 已存在`);
+                return;
+            }
             
-            const filteredInv = period === 'all' ? investments : 
-                investments.filter(i => now - i.timestamp < filters[period]);
+            symbols[code] = { name: name, market: 'CUSTOM' };
+            saveCustomSymbols(symbols);
+            renderCustomSymbols();
             
-            const totalInvested = filteredInv.reduce((sum, i) => sum + i.amount, 0);
-            const avgInvest = filteredInv.length > 0 ? totalInvested / filteredInv.length : 0;
-            const investFreq = filteredInv.length > 1 ? 
-                (filteredInv[filteredInv.length-1].timestamp - filteredInv[0].timestamp) / (filteredInv.length - 1) / (24*60*60*1000) : 0;
+            document.getElementById('newSymbolCode').value = '';
+            document.getElementById('newSymbolName').value = '';
             
-            const rebalanceCount = rebalances.length;
-            const avgDrift = rebalances.length > 0 ? 
-                rebalances.reduce((sum, r) => sum + r.maxDrift, 0) / rebalances.length : 0;
+            showNotif('success', '✓ 已添加', `${code} - ${name}`);
+        }
+        
+        // 删除自定义行情标的
+        function removeCustomSymbol(code) {
+            if (!confirm(`确定移除标的 ${code}？`)) return;
+            const symbols = getCustomSymbols();
+            delete symbols[code];
+            saveCustomSymbols(symbols);
+            renderCustomSymbols();
+            showNotif('info', '✓ 已移除', `${code} 已从行情列表移除`);
+        }
+        
+        // 渲染自定义行情标的列表
+        function renderCustomSymbols() {
+            const container = document.getElementById('customSymbolList');
+            if (!container) return;
             
-            document.getElementById('analysisContent').innerHTML = `
-                <div class="analysis-grid">
-                    <div class="analysis-card">
-                        <div class="analysis-title">📊 投资行为分析</div>
-                        <div class="metric-row">
-                            <span class="metric-label">投资次数</span>
-                            <span class="metric-value">${filteredInv.length}次</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">累计投入</span>
-                            <span class="metric-value">¥${totalInvested.toFixed(2)}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">平均单笔</span>
-                            <span class="metric-value">¥${avgInvest.toFixed(2)}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">投资频率</span>
-                            <span class="metric-value">${investFreq > 0 ? `每${investFreq.toFixed(0)}天` : 'N/A'}</span>
+            const symbols = getCustomSymbols();
+            const entries = Object.entries(symbols);
+            
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 0.875rem;">暂无自定义标的</div>';
+                return;
+            }
+            
+            container.innerHTML = entries.map(([code, info]) => `
+                <div class="config-item" style="margin-bottom: 6px; padding: 12px;">
+                    <div class="config-info">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: var(--primary);"></div>
+                        <div>
+                            <div class="config-name" style="font-size: 0.875rem;">${code} <span style="color: var(--text-muted); font-weight: 400;">- ${info.name}</span></div>
                         </div>
                     </div>
-                    
-                    <div class="analysis-card">
-                        <div class="analysis-title">⚖️ 再平衡分析</div>
-                        <div class="metric-row">
-                            <span class="metric-label">再平衡次数</span>
-                            <span class="metric-value">${rebalanceCount}次</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">平均偏离度</span>
-                            <span class="metric-value">${(avgDrift*100).toFixed(2)}%</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">纪律性评分</span>
-                            <span class="metric-value ${rebalanceCount >= filteredInv.length/3 ? 'positive' : 'negative'}">
-                                ${rebalanceCount >= filteredInv.length/3 ? '优秀' : '需加强'}
-                            </span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">最近操作</span>
-                            <span class="metric-value">${rebalances.length > 0 ? new Date(rebalances[rebalances.length-1].timestamp).toLocaleDateString() : '无'}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="analysis-card">
-                        <div class="analysis-title">🌍 地域配置分析</div>
-                        <div id="regionAnalysis"></div>
-                    </div>
-                    
-                    <div class="analysis-card">
-                        <div class="analysis-title">📈 时间分布</div>
-                        <div id="timeAnalysis"></div>
+                    <div class="config-input">
+                        <span class="delete-asset-btn" onclick="removeCustomSymbol('${code}')" title="移除">🗑</span>
                     </div>
                 </div>
-            `;
+            `).join('');
+        }
+        
+        // 获取所有行情标的（内置+自定义）
+        function getAllMarketSymbols() {
+            return { ...MARKET_SYMBOLS, ...getCustomSymbols() };
+        }
+        
+        // 测试API连接
+        async function testApiConnection() {
+            const settings = getApiSettings();
+            if (!settings.apiKey) {
+                showNotif('error', '✗ 无API Key', '请先输入API Key');
+                return;
+            }
             
-            const regionInvest = {US: 0, EU: 0, APAC: 0, CN: 0, OTHER: 0};
-            filteredInv.forEach(inv => {
-                Object.entries(inv.allocations).forEach(([name, amount]) => {
-                    const region = ASSETS[name]?.region || 'OTHER';
-                    regionInvest[region] += amount;
+            showNotif('info', '🔗 测试中...', '正在连接API服务');
+            
+            try {
+                const quote = await fetchQuote('SPY', settings);
+                if (quote && quote.price) {
+                    showNotif('success', '✓ 连接成功', `SPY 当前价格: $${quote.price}`);
+                } else {
+                    showNotif('error', '✗ 连接失败', '未获取到数据，请检查API Key');
+                }
+            } catch(e) {
+                showNotif('error', '✗ 连接失败', e.message || '网络错误');
+            }
+        }
+        
+        // 获取单个标的行情
+        async function fetchQuote(symbol, settings) {
+            if (!settings) settings = getApiSettings();
+            if (!settings.apiKey) return null;
+            
+            const cacheKey = `quote_${symbol}`;
+            
+            // 先尝试读取缓存（任何时间的数据都可用作备用）
+            let cachedData = null;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    cachedData = JSON.parse(cached);
+                } catch(e) {}
+            }
+            
+            let url = '';
+            if (settings.provider === 'alphavantage') {
+                url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${settings.apiKey}`;
+            } else if (settings.provider === 'finnhub') {
+                url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${settings.apiKey}`;
+            }
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (cachedData) {
+                        cachedData.stale = true;
+                        return cachedData;
+                    }
+                    return null;
+                }
+                
+                const json = await response.json();
+                
+                // 检测API限额错误（Alpha Vantage 每天25次限制）
+                if (json.Note || json.Information) {
+                    const limitMsg = json.Note || json.Information;
+                    console.warn(`API rate limit for ${symbol}: ${limitMsg}`);
+                    if (cachedData) {
+                        cachedData.stale = true;
+                        return cachedData;
+                    }
+                    return null;
+                }
+                
+                let result = null;
+                
+                if (settings.provider === 'alphavantage') {
+                    const q = json['Global Quote'];
+                    if (q && q['05. price']) {
+                        result = {
+                            symbol: symbol,
+                            price: parseFloat(q['05. price']),
+                            change: parseFloat(q['09. change'] || 0),
+                            changePercent: parseFloat((q['10. change percent'] || '0').replace('%', '')),
+                            high: parseFloat(q['03. high'] || 0),
+                            low: parseFloat(q['04. low'] || 0),
+                            volume: parseInt(q['06. volume'] || 0),
+                            stale: false,
+                        };
+                    }
+                } else if (settings.provider === 'finnhub') {
+                    if (json.c) {
+                        result = {
+                            symbol: symbol,
+                            price: json.c,
+                            change: json.d || 0,
+                            changePercent: json.dp || 0,
+                            high: json.h || 0,
+                            low: json.l || 0,
+                            volume: 0,
+                            stale: false,
+                        };
+                    }
+                }
+                
+                if (result) {
+                    result.timestamp = Date.now();
+                    localStorage.setItem(cacheKey, JSON.stringify(result));
+                } else if (cachedData) {
+                    cachedData.stale = true;
+                    return cachedData;
+                }
+                
+                return result;
+            } catch(e) {
+                console.warn(`Fetch error for ${symbol}:`, e);
+                if (cachedData) {
+                    cachedData.stale = true;
+                    return cachedData;
+                }
+                return null;
+            }
+        }
+        
+        // 自动刷新行情（仅当缓存超过1小时时）
+        function autoRefreshMarket() {
+            const settings = getApiSettings();
+            if (!settings.apiKey) {
+                document.getElementById('marketDataGrid').innerHTML = '<div class="empty-state" style="padding: 20px;"><div style="color: var(--text-muted); font-size: 0.875rem;">请在设置中配置API Key以获取实时行情</div></div>';
+                return;
+            }
+            
+            // 检查是否有任何缓存数据
+            const allSymbols = getAllMarketSymbols();
+            const symbols = Object.keys(allSymbols);
+            if (symbols.length === 0) return;
+            
+            // 找最早的缓存时间
+            let oldestTime = Infinity;
+            symbols.forEach(sym => {
+                const cached = localStorage.getItem(`quote_${sym}`);
+                if (cached) {
+                    try {
+                        const data = JSON.parse(cached);
+                        if (data.timestamp < oldestTime) oldestTime = data.timestamp;
+                    } catch(e) {}
+                }
+            });
+            
+            // 如果有缓存且未过1小时，直接用缓存
+            if (oldestTime < Infinity && Date.now() - oldestTime < 60 * 60 * 1000) {
+                // 使用缓存数据渲染
+                const results = [];
+                symbols.forEach(sym => {
+                    const cached = localStorage.getItem(`quote_${sym}`);
+                    if (cached) {
+                        try {
+                            const data = JSON.parse(cached);
+                            results.push({ ...data, info: allSymbols[sym], stale: false });
+                        } catch(e) {}
+                    }
                 });
-            });
+                if (results.length > 0) {
+                    renderMarketData(results);
+                    const lastUpdate = new Date(oldestTime);
+                    document.getElementById('marketLastUpdate').textContent = `更新于 ${lastUpdate.toLocaleTimeString()}`;
+                    return;
+                }
+            }
             
-            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国', OTHER: '其他'};
-            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981', OTHER: '#64748b'};
+            // 缓存过期或无缓存，从API刷新
+            refreshMarketData();
+        }
+        
+        // 刷新市场数据（手动调用）
+        async function refreshMarketData() {
+            const settings = getApiSettings();
+            if (!settings.apiKey) {
+                document.getElementById('marketDataGrid').innerHTML = '<div class="empty-state" style="padding: 20px;"><div style="color: var(--text-muted); font-size: 0.875rem;">请在设置中配置API Key以获取实时行情</div></div>';
+                return;
+            }
             
-            document.getElementById('regionAnalysis').innerHTML = Object.entries(regionInvest)
-                .filter(([_,v]) => v > 0)
-                .sort((a,b) => b[1]-a[1])
-                .map(([region, amount]) => `
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="color: ${regionColors[region]}; font-weight: 600;">${regionNames[region]}</span>
-                            <span>¥${amount.toFixed(0)}</span>
+            document.getElementById('marketDataGrid').innerHTML = '<div class="empty-state" style="padding: 20px;"><div class="loading" style="margin: 0 auto;"></div><div style="color: var(--text-muted); margin-top: 12px;">正在获取行情数据...</div></div>';
+            
+            const allSymbols = getAllMarketSymbols();
+            const symbols = Object.keys(allSymbols);
+            const results = [];
+            
+            for (const symbol of symbols) {
+                try {
+                    const quote = await fetchQuote(symbol, settings);
+                    if (quote) {
+                        results.push({ ...quote, info: allSymbols[symbol] });
+                    }
+                    if (settings.provider === 'alphavantage') {
+                        await new Promise(r => setTimeout(r, 2500));
+                    }
+                } catch(e) {
+                    console.warn(`Failed to fetch ${symbol}:`, e);
+                }
+            }
+            
+            renderMarketData(results);
+            
+            const now = new Date();
+            document.getElementById('marketLastUpdate').textContent = `更新于 ${now.toLocaleTimeString()}`;
+        }
+        
+        // 渲染市场数据
+        function renderMarketData(data) {
+            const container = document.getElementById('marketDataGrid');
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 20px;"><div style="color: var(--text-muted);">未获取到行情数据</div></div>';
+                return;
+            }
+            
+            container.innerHTML = data.map(item => {
+                const isUp = item.change >= 0;
+                const changeColor = isUp ? 'var(--success)' : 'var(--danger)';
+                const arrow = isUp ? '&#9650;' : '&#9660;';
+                const isStale = item.stale;
+                
+                return `
+                    <div class="stat-card" style="padding: 16px; ${isStale ? 'opacity: 0.7;' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.875rem;">${item.symbol} ${isStale ? '<span style="font-size: 0.65rem; color: var(--warning); font-weight: 400;">(缓存)</span>' : ''}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">${item.info.name}</div>
+                            </div>
+                            <div style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${isUp ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; color: ${changeColor};">
+                                ${arrow} ${Math.abs(item.changePercent).toFixed(2)}%
+                            </div>
                         </div>
-                        <div style="height: 6px; background: var(--border); border-radius: 3px;">
-                            <div style="height: 100%; width: ${Math.min(amount/totalInvested*100*2, 100)}%; background: ${regionColors[region]}; border-radius: 3px;"></div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: ${changeColor};">
+                            $${item.price.toFixed(2)}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                            涨跌: ${isUp ? '+' : ''}${item.change.toFixed(2)}
                         </div>
                     </div>
-                `).join('');
-            
-            const byMonth = {};
-            filteredInv.forEach(inv => {
-                const month = new Date(inv.timestamp).toLocaleString('zh-CN', {year: 'numeric', month: 'short'});
-                byMonth[month] = (byMonth[month] || 0) + inv.amount;
-            });
-            
-            document.getElementById('timeAnalysis').innerHTML = Object.entries(byMonth)
-                .slice(-6)
-                .map(([month, amount]) => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);">
-                        <span style="color: var(--text-muted);">${month}</span>
-                        <span style="font-weight: 600;">¥${amount.toFixed(0)}</span>
-                    </div>
-                `).join('');
+                `;
+            }).join('');
+        }
+
+        function refreshDashboard() {
+            updateDashboard();
+            showNotif('success', '✓ 已刷新', '仪表盘数据已更新');
         }
 
         // 历史记录
@@ -2480,6 +3205,445 @@
                     
                     renderHistoryList(allHistoryData);
                 };
+            };
+        }
+        
+        // ==================== 编辑功能 ====================
+        
+        let currentEditType = null;
+        let currentEditId = null;
+        let currentEditData = null;
+        
+        // 打开编辑模态框
+        function editRecord(type, id) {
+            if (!checkDb()) return;
+            currentEditType = type;
+            currentEditId = id;
+            
+            const storeName = type === 'invest' ? 'investments' : 'rebalances';
+            const tx = db.transaction([storeName], 'readonly');
+            const store = tx.objectStore(storeName);
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                currentEditData = request.result;
+                if (!currentEditData) {
+                    showNotif('error', '✗ 未找到', '记录不存在');
+                    return;
+                }
+                
+                const modal = document.getElementById('editModal');
+                const title = document.getElementById('editModalTitle');
+                const content = document.getElementById('editModalContent');
+                
+                if (type === 'invest') {
+                    title.textContent = '✏️ 编辑投资记录';
+                    content.innerHTML = renderInvestEditForm(currentEditData);
+                } else {
+                    title.textContent = '✏️ 编辑再平衡记录';
+                    content.innerHTML = renderRebalanceEditForm(currentEditData);
+                }
+                
+                modal.classList.add('active');
+            };
+        }
+        
+        // 渲染投资记录编辑表单
+        function renderInvestEditForm(data) {
+            let html = `
+                <div class="input-group">
+                    <label>投资日期</label>
+                    <input type="date" id="editDate" value="${data.date}">
+                </div>
+                <div class="input-group">
+                    <label>投资金额 (元)</label>
+                    <input type="number" id="editAmount" value="${data.amount}" step="0.01" min="0">
+                </div>
+                <div class="input-group">
+                    <label>备注</label>
+                    <input type="text" id="editNote" value="${data.note || ''}">
+                </div>
+                <div style="margin-top: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 12px; color: var(--text-muted); font-size: 0.875rem;">各标的分配详情</div>
+            `;
+            
+            Object.entries(data.allocations).forEach(([name, alloc]) => {
+                const isObject = typeof alloc === 'object' && alloc !== null;
+                const amount = isObject ? alloc.amount : alloc;
+                const shares = isObject ? (alloc.shares || 0) : 0;
+                const unitPrice = isObject ? (alloc.unitPrice || 0) : 0;
+                
+                html += `
+                    <div class="config-item" style="margin-bottom: 8px;">
+                        <div class="config-info">
+                            <div class="config-color" style="background: ${ASSETS[name]?.color || '#64748b'}"></div>
+                            <div class="config-name" style="font-size: 0.875rem;">${name}</div>
+                        </div>
+                        <div class="config-input" style="gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">金额:</span>
+                                <input type="number" class="weight-input" style="width: 80px;" step="0.01" min="0"
+                                       value="${amount.toFixed(2)}" 
+                                       onchange="updateEditAllocation('${name}', 'amount', this.value)"
+                                       id="edit_alloc_${name}">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">份额:</span>
+                                <input type="number" class="weight-input" style="width: 70px;" step="0.01" min="0"
+                                       value="${shares || ''}" 
+                                       onchange="updateEditAllocation('${name}', 'shares', this.value)"
+                                       id="edit_shares_${name}" placeholder="0">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">单价:</span>
+                                <input type="number" class="weight-input" style="width: 70px;" step="0.01" min="0"
+                                       value="${unitPrice || ''}" 
+                                       onchange="updateEditAllocation('${name}', 'unitPrice', this.value)"
+                                       id="edit_price_${name}" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // 渲染再平衡记录编辑表单
+        function renderRebalanceEditForm(data) {
+            let html = `
+                <div class="input-group">
+                    <label>再平衡日期</label>
+                    <input type="date" id="editDate" value="${data.date}">
+                </div>
+                <div style="margin-top: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 12px; color: var(--text-muted); font-size: 0.875rem;">各持仓市值</div>
+            `;
+            
+            Object.entries(data.currentHoldings).forEach(([name, value]) => {
+                html += `
+                    <div class="config-item" style="margin-bottom: 8px;">
+                        <div class="config-info">
+                            <div class="config-color" style="background: ${ASSETS[name]?.color || '#64748b'}"></div>
+                            <div class="config-name" style="font-size: 0.875rem;">${name}</div>
+                        </div>
+                        <div class="config-input">
+                            <input type="number" class="weight-input" style="width: 100px;" step="0.01" min="0"
+                                   value="${value.toFixed(2)}" 
+                                   onchange="updateEditHolding('${name}', this.value)"
+                                   id="edit_holding_${name}">
+                            <span style="color: var(--text-muted);">元</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // 更新编辑中的分配数据
+        function updateEditAllocation(assetName, field, value) {
+            if (!currentEditData) return;
+            if (!currentEditData.allocations[assetName]) return;
+            
+            // 如果是简单数字格式，先转换为对象格式
+            if (typeof currentEditData.allocations[assetName] === 'number') {
+                const amount = currentEditData.allocations[assetName];
+                currentEditData.allocations[assetName] = { amount: amount, shares: 0, unitPrice: 0, weight: 0 };
+            }
+            
+            currentEditData.allocations[assetName][field] = parseFloat(value) || 0;
+            
+            // 自动计算：如果改了份额和单价，重算金额
+            const alloc = currentEditData.allocations[assetName];
+            if (alloc.shares > 0 && alloc.unitPrice > 0) {
+                alloc.amount = alloc.shares * alloc.unitPrice;
+                const amountInput = document.getElementById(`edit_alloc_${assetName}`);
+                if (amountInput) amountInput.value = alloc.amount.toFixed(2);
+            }
+        }
+        
+        // 更新编辑中的持仓数据
+        function updateEditHolding(assetName, value) {
+            if (!currentEditData) return;
+            currentEditData.currentHoldings[assetName] = parseFloat(value) || 0;
+        }
+        
+        // 保存编辑
+        async function saveEdit() {
+            if (!currentEditData || !currentEditType || !currentEditId) return;
+            
+            const storeName = currentEditType === 'invest' ? 'investments' : 'rebalances';
+            
+            // 更新日期
+            const newDate = document.getElementById('editDate').value;
+            if (newDate) currentEditData.date = newDate;
+            
+            // 更新金额（仅投资记录）
+            if (currentEditType === 'invest') {
+                const newAmount = parseFloat(document.getElementById('editAmount').value);
+                if (newAmount > 0) currentEditData.amount = newAmount;
+                currentEditData.note = document.getElementById('editNote').value;
+            }
+            
+            // 更新时间戳
+            currentEditData.timestamp = Date.now();
+            currentEditData.updatedAt = Date.now();
+            
+            try {
+                // 获取修改前的快照
+                const getTx = db.transaction([storeName], 'readonly');
+                const getStore = getTx.objectStore(storeName);
+                const getRequest = getStore.get(currentEditId);
+                
+                const beforeSnapshot = await new Promise((resolve) => {
+                    getRequest.onsuccess = () => resolve(getRequest.result);
+                    getRequest.onerror = () => resolve(null);
+                });
+                
+                // 保存修改
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.put(currentEditData);
+                
+                request.onsuccess = () => {
+                    // 记录审计日志
+                    logAudit('update', storeName, currentEditId, beforeSnapshot, currentEditData);
+                    
+                    showNotif('success', '✓ 已保存', '记录已更新');
+                    closeEditModal();
+                    loadHistory();
+                    updateDashboard();
+                };
+                
+                request.onerror = () => {
+                    showNotif('error', '✗ 保存失败', '请重试');
+                };
+            } catch (error) {
+                console.error('Save edit error:', error);
+                showNotif('error', '✗ 系统错误', error.message);
+            }
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            currentEditType = null;
+            currentEditId = null;
+            currentEditData = null;
+        }
+        
+        // ==================== 定期投资计划 DCA ====================
+        
+        async function createSchedule() {
+            if (!checkDb()) return;
+            
+            const name = document.getElementById('scheduleName').value.trim();
+            const amount = parseFloat(document.getElementById('scheduleAmount').value);
+            const frequency = document.getElementById('scheduleFrequency').value;
+            const day = parseInt(document.getElementById('scheduleDay').value) || 1;
+            const startDate = document.getElementById('scheduleStartDate').value;
+            const note = document.getElementById('scheduleNote').value.trim();
+            
+            if (!name || !amount || amount <= 0) {
+                showNotif('error', '✗ 输入错误', '请填写计划名称和金额');
+                return;
+            }
+            
+            const schedule = {
+                name: name,
+                amount: amount,
+                frequency: frequency,
+                dayOfMonth: day,
+                weights: JSON.parse(JSON.stringify(currentWeights)),
+                isActive: true,
+                startDate: startDate || getLocalDateString(),
+                lastExecuted: null,
+                nextDue: computeNextDue(frequency, day, startDate || getLocalDateString()),
+                note: note,
+                createdAt: new Date().toISOString(),
+            };
+            
+            try {
+                const tx = db.transaction(['schedules'], 'readwrite');
+                const store = tx.objectStore('schedules');
+                const request = store.add(schedule);
+                
+                request.onsuccess = () => {
+                    logAudit('create', 'schedules', request.result, null, schedule);
+                    showNotif('success', '✓ 计划已创建', `定期投资计划"${name}"已保存`);
+                    loadSchedules();
+                    document.getElementById('scheduleName').value = '';
+                    document.getElementById('scheduleAmount').value = '';
+                    document.getElementById('scheduleNote').value = '';
+                };
+                
+                request.onerror = () => {
+                    showNotif('error', '✗ 创建失败', '请重试');
+                };
+            } catch(e) {
+                showNotif('error', '✗ 系统错误', e.message);
+            }
+        }
+        
+        function computeNextDue(frequency, day, startDate) {
+            const now = new Date();
+            const start = new Date(startDate);
+            let next = new Date(start);
+            
+            while (next < now) {
+                switch(frequency) {
+                    case 'weekly': next.setDate(next.getDate() + 7); break;
+                    case 'biweekly': next.setDate(next.getDate() + 14); break;
+                    case 'monthly': next.setMonth(next.getMonth() + 1); break;
+                    case 'quarterly': next.setMonth(next.getMonth() + 3); break;
+                }
+                next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+            }
+            
+            return next.toISOString();
+        }
+        
+        async function loadSchedules() {
+            if (!checkDb()) return;
+            const tx = db.transaction(['schedules'], 'readonly');
+            const store = tx.objectStore('schedules');
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const schedules = request.result;
+                const container = document.getElementById('scheduleList');
+                
+                if (schedules.length === 0) {
+                    container.innerHTML = '<div class="empty-state" style="padding: 20px;"><div style="color: var(--text-muted); font-size: 0.875rem;">暂无定期投资计划</div></div>';
+                    return;
+                }
+                
+                const freqNames = { weekly: '每周', biweekly: '每两周', monthly: '每月', quarterly: '每季度' };
+                
+                container.innerHTML = schedules.map(s => `
+                    <div class="config-item" style="margin-bottom: 8px;">
+                        <div class="config-info">
+                            <div>
+                                <div class="config-name">${s.name} ${s.isActive ? '' : '<span style="color: var(--warning); font-size: 0.75rem;">(已暂停)</span>'}</div>
+                                <div class="config-detail">¥${s.amount.toFixed(2)} / ${freqNames[s.frequency]} · 每月${s.dayOfMonth}日 · 下次: ${s.nextDue ? new Date(s.nextDue).toLocaleDateString() : '未设定'}</div>
+                            </div>
+                        </div>
+                        <div class="config-input" style="gap: 8px;">
+                            <button class="btn btn-secondary btn-small" onclick="toggleSchedule(${s.id}, ${!s.isActive})">${s.isActive ? '暂停' : '启用'}</button>
+                            <button class="btn btn-primary btn-small" onclick="executeScheduleNow(${s.id})">立即执行</button>
+                            <button class="icon-btn" onclick="deleteSchedule(${s.id})" title="删除">🗑</button>
+                        </div>
+                    </div>
+                `).join('');
+            };
+        }
+        
+        async function toggleSchedule(id, isActive) {
+            if (!checkDb()) return;
+            const tx = db.transaction(['schedules'], 'readwrite');
+            const store = tx.objectStore('schedules');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const schedule = request.result;
+                if (!schedule) return;
+                schedule.isActive = isActive;
+                if (isActive) {
+                    schedule.nextDue = computeNextDue(schedule.frequency, schedule.dayOfMonth, getLocalDateString());
+                }
+                const putTx = db.transaction(['schedules'], 'readwrite');
+                putTx.objectStore('schedules').put(schedule);
+                showNotif('info', isActive ? '✓ 已启用' : '⏸ 已暂停', `计划"${schedule.name}"已${isActive ? '启用' : '暂停'}`);
+                loadSchedules();
+            };
+        }
+        
+        async function executeScheduleNow(id) {
+            if (!checkDb()) return;
+            const tx = db.transaction(['schedules'], 'readonly');
+            const store = tx.objectStore('schedules');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const schedule = request.result;
+                if (!schedule) return;
+                
+                switchTab('invest');
+                document.getElementById('investAmount').value = schedule.amount;
+                document.getElementById('investNote').value = `定期投资: ${schedule.name}`;
+                
+                tempInvestWeights = JSON.parse(JSON.stringify(schedule.weights));
+                document.getElementById('investCustomToggle').classList.add('active');
+                document.getElementById('investWeightPanel').style.display = 'block';
+                createWeightList('invest', tempInvestWeights);
+                updateWeightTotal('invest');
+                
+                showNotif('info', '📅 计划已载入', `请确认并执行"${schedule.name}"的投资`);
+            };
+        }
+        
+        async function deleteSchedule(id) {
+            if (!checkDb()) return;
+            if (!confirm('确定删除此定期投资计划？')) return;
+            
+            const tx = db.transaction(['schedules'], 'readwrite');
+            const store = tx.objectStore('schedules');
+            
+            const getReq = store.get(id);
+            getReq.onsuccess = () => {
+                const record = getReq.result;
+                const delTx = db.transaction(['schedules'], 'readwrite');
+                delTx.objectStore('schedules').delete(id);
+                delTx.oncomplete = () => {
+                    logAudit('delete', 'schedules', id, record, null);
+                    showNotif('success', '✓ 已删除', '计划已移除');
+                    loadSchedules();
+                };
+            };
+        }
+        
+        async function checkDueSchedules() {
+            if (!db) return;
+            const tx = db.transaction(['schedules'], 'readonly');
+            const store = tx.objectStore('schedules');
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const now = new Date();
+                const dueSchedules = request.result.filter(s => 
+                    s.isActive && s.nextDue && new Date(s.nextDue) <= now
+                );
+                
+                const scheduleContainer = document.getElementById('todoSchedule');
+                if (dueSchedules.length > 0) {
+                    const scheduleHTML = dueSchedules.map(s => `
+                        <div style="padding: 12px; background: rgba(99,102,241,0.1); border-radius: 8px; border-left: 3px solid var(--primary); margin-bottom: 8px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">📅 ${s.name}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">定期投资 ¥${s.amount.toFixed(2)} 已到期</div>
+                            <button class="btn btn-primary btn-small" onclick="executeScheduleNow(${s.id})">立即执行</button>
+                        </div>
+                    `).join('');
+                    scheduleContainer.innerHTML = scheduleHTML;
+                    
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        dueSchedules.forEach(s => {
+                            new Notification('投资提醒', {
+                                body: `${s.name}: ¥${s.amount} 定期投资已到期`,
+                                icon: './manifest.json',
+                            });
+                        });
+                    }
+                } else {
+                    scheduleContainer.innerHTML = '';
+                }
+                
+                // 检查todoCard是否需要显示
+                const hasRebalanceTodo = document.getElementById('todoRebalance').innerHTML.trim() !== '';
+                const hasScheduleTodo = scheduleContainer.innerHTML.trim() !== '';
+                document.getElementById('todoCard').style.display = (hasRebalanceTodo || hasScheduleTodo) ? 'block' : 'none';
             };
         }
 
@@ -2513,6 +3677,7 @@
                                 ${isInvest ? '+' : ''}¥${isInvest ? item.amount.toFixed(2) : item.estimatedFee.toFixed(2)}
                             </div>
                             <div class="history-actions">
+                                <button class="icon-btn" onclick="editRecord('${item.type}', ${item.id})" title="编辑" style="color: var(--info);">✏️</button>
                                 <button class="icon-btn" onclick="viewDetail('${item.type}', ${item.id})" title="查看详情">👁</button>
                                 <button class="icon-btn" onclick="deleteRecord('${item.type}', ${item.id})" title="删除">🗑</button>
                             </div>
@@ -2545,14 +3710,28 @@
             if (!confirm('确定删除这条记录？此操作不可恢复。')) return;
             
             const storeName = type === 'invest' ? 'investments' : 'rebalances';
-            const tx = db.transaction([storeName], 'readwrite');
-            const store = tx.objectStore(storeName);
-            const request = store.delete(id);
             
-            request.onsuccess = () => {
-                showNotif('success', '✓ 已删除', '记录已移除');
-                loadHistory();
-                updateDashboard();
+            // 先获取要删除的记录（用于审计日志）
+            const getTx = db.transaction([storeName], 'readonly');
+            const getStore = getTx.objectStore(storeName);
+            const getRequest = getStore.get(id);
+            
+            getRequest.onsuccess = () => {
+                const record = getRequest.result;
+                
+                // 删除记录
+                const deleteTx = db.transaction([storeName], 'readwrite');
+                const deleteStore = deleteTx.objectStore(storeName);
+                const deleteRequest = deleteStore.delete(id);
+                
+                deleteRequest.onsuccess = () => {
+                    // 记录审计日志
+                    logAudit('delete', storeName, id, record, null);
+                    
+                    showNotif('success', '✓ 已删除', '记录已移除');
+                    loadHistory();
+                    updateDashboard();
+                };
             };
         }
 
@@ -2563,8 +3742,16 @@
             let content = '';
             if (type === 'invest') {
                 content = `日期：${item.date}\n金额：¥${item.amount.toFixed(2)}\n备注：${item.note || '无'}\n\n分配详情：\n`;
-                Object.entries(item.allocations).forEach(([name, amount]) => {
-                    content += `${name}: ¥${amount.toFixed(2)} (${(amount/item.amount*100).toFixed(1)}%)\n`;
+                Object.entries(item.allocations).forEach(([name, alloc]) => {
+                    const isObject = typeof alloc === 'object' && alloc !== null;
+                    const amount = isObject ? alloc.amount : alloc;
+                    const shares = isObject ? alloc.shares : 0;
+                    const unitPrice = isObject ? alloc.unitPrice : 0;
+                    content += `${name}: ¥${amount.toFixed(2)}`;
+                    if (shares > 0 && unitPrice > 0) {
+                        content += ` (${shares.toFixed(2)}份 × ¥${unitPrice.toFixed(2)})`;
+                    }
+                    content += '\n';
                 });
             } else {
                 content = `日期：${item.date}\n总资产：¥${item.totalValue.toFixed(2)}\n最大偏离度：${(item.maxDrift*100).toFixed(2)}%\n\n调仓详情：\n`;
@@ -2573,11 +3760,392 @@
                 });
             }
             
-            alert(content);
+            // 显示详情模态框（带编辑按钮）
+            const modal = document.getElementById('editModal');
+            const title = document.getElementById('editModalTitle');
+            const modalContent = document.getElementById('editModalContent');
+            
+            title.textContent = type === 'invest' ? '📋 投资记录详情' : '📋 再平衡记录详情';
+            modalContent.innerHTML = `
+                <div style="white-space: pre-wrap; font-family: inherit; line-height: 1.6; color: var(--text); background: var(--glass); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">${content}</div>
+                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                    <button class="btn btn-primary btn-small" onclick="closeEditModal(); editRecord('${type}', ${id});">✏️ 编辑此记录</button>
+                </div>
+            `;
+            
+            // 修改保存按钮为关闭按钮（查看详情模式）
+            const saveBtn = modal.querySelector('.btn-primary');
+            if (saveBtn && saveBtn.textContent.includes('保存')) {
+                saveBtn.textContent = '✓ 关闭';
+                saveBtn.onclick = closeEditModal;
+            }
+            
+            modal.classList.add('active');
         }
 
-        function showStats() {
-            alert('统计图表功能正在开发中，敬请期待！');
+        // ==================== 图表可视化 ====================
+        
+        let portfolioChartInstance = null;
+        let analysisChartInstances = [];
+        
+        function destroyCharts() {
+            analysisChartInstances.forEach(c => { if (c) c.destroy(); });
+            analysisChartInstances = [];
+        }
+        
+        // ==================== 分析功能增强 ====================
+        
+        function updateAnalysis() {
+            if (!checkDb()) return;
+            destroyCharts();
+            const period = document.getElementById('analysisPeriod').value;
+            
+            const tx1 = db.transaction(['investments'], 'readonly');
+            const invStore = tx1.objectStore('investments');
+            const invReq = invStore.getAll();
+            
+            invReq.onsuccess = () => {
+                const investments = invReq.result;
+                
+                const tx2 = db.transaction(['rebalances'], 'readonly');
+                const rebStore = tx2.objectStore('rebalances');
+                const rebReq = rebStore.getAll();
+                
+                rebReq.onsuccess = () => {
+                    const rebalances = rebReq.result;
+                    renderAnalysis(investments, rebalances, period);
+                };
+            };
+        }
+        
+        function renderAnalysis(investments, rebalances, period) {
+            if (investments.length === 0) {
+                document.getElementById('analysisContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📈</div>
+                        <div>数据不足，无法生成分析报告</div>
+                        <small style="color: var(--text-muted); display: block; margin-top: 8px;">请至少完成一次投资操作</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            const now = Date.now();
+            const filters = {
+                month: 30 * 24 * 60 * 60 * 1000,
+                quarter: 90 * 24 * 60 * 60 * 1000,
+                year: 365 * 24 * 60 * 60 * 1000
+            };
+            
+            const filteredInv = period === 'all' ? investments : 
+                investments.filter(i => now - i.timestamp < filters[period]);
+            
+            const totalInvested = filteredInv.reduce((sum, i) => sum + i.amount, 0);
+            const avgInvest = filteredInv.length > 0 ? totalInvested / filteredInv.length : 0;
+            const investFreq = filteredInv.length > 1 ? 
+                (filteredInv[filteredInv.length-1].timestamp - filteredInv[0].timestamp) / (filteredInv.length - 1) / (24*60*60*1000) : 0;
+            
+            const rebalanceCount = rebalances.length;
+            const avgDrift = rebalances.length > 0 ? 
+                rebalances.reduce((sum, r) => sum + r.maxDrift, 0) / rebalances.length : 0;
+            
+            // 计算收益率相关指标
+            let totalReturnPct = 0;
+            let annualizedReturn = 0;
+            let maxDrawdown = 0;
+            let volatility = 0;
+            let sharpeRatio = 0;
+            
+            // 基于最近一次再平衡的总资产和累计投入计算
+            if (rebalances.length > 0) {
+                const lastReb = rebalances.sort((a,b) => b.timestamp - a.timestamp)[0];
+                const totalAssets = Object.values(lastReb.currentHoldings).reduce((a,b) => a+b, 0);
+                if (totalInvested > 0) {
+                    totalReturnPct = ((totalAssets - totalInvested) / totalInvested) * 100;
+                    
+                    // 计算年化收益率
+                    const firstDate = filteredInv[0].timestamp;
+                    const yearsElapsed = Math.max((now - firstDate) / (365.25 * 24 * 60 * 60 * 1000), 0.01);
+                    if (totalAssets > 0 && totalInvested > 0) {
+                        annualizedReturn = (Math.pow(totalAssets / totalInvested, 1 / yearsElapsed) - 1) * 100;
+                    }
+                }
+                
+                // 计算最大回撤（基于再平衡历史）
+                if (rebalances.length >= 2) {
+                    let peak = 0;
+                    const sortedRebs = rebalances.sort((a,b) => a.timestamp - b.timestamp);
+                    for (const reb of sortedRebs) {
+                        const val = Object.values(reb.currentHoldings).reduce((a,b) => a+b, 0);
+                        if (val > peak) peak = val;
+                        if (peak > 0) {
+                            const dd = (peak - val) / peak;
+                            if (dd > maxDrawdown) maxDrawdown = dd;
+                        }
+                    }
+                }
+                
+                // 计算波动率（基于投资金额变化的标准差）
+                if (filteredInv.length >= 2) {
+                    const returns = [];
+                    for (let i = 1; i < filteredInv.length; i++) {
+                        const r = (filteredInv[i].amount - filteredInv[i-1].amount) / filteredInv[i-1].amount;
+                        returns.push(r);
+                    }
+                    if (returns.length > 0) {
+                        const mean = returns.reduce((a,b) => a+b, 0) / returns.length;
+                        const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+                        volatility = Math.sqrt(variance) * 100;
+                    }
+                }
+                
+                // 夏普比率（假设无风险利率2%）
+                if (volatility > 0) {
+                    sharpeRatio = (annualizedReturn - 2) / volatility;
+                }
+            }
+            
+            // 获取持仓数据用于图表
+            let currentHoldings = {};
+            if (rebalances.length > 0) {
+                const lastReb = rebalances.sort((a,b) => b.timestamp - a.timestamp)[0];
+                currentHoldings = JSON.parse(JSON.stringify(lastReb.currentHoldings));
+            }
+            
+            document.getElementById('analysisContent').innerHTML = `
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <div class="analysis-title">📊 投资行为分析</div>
+                        <div class="metric-row">
+                            <span class="metric-label">投资次数</span>
+                            <span class="metric-value">${filteredInv.length}次</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">累计投入</span>
+                            <span class="metric-value">¥${totalInvested.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">平均单笔</span>
+                            <span class="metric-value">¥${avgInvest.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">投资频率</span>
+                            <span class="metric-value">${investFreq > 0 ? `每${investFreq.toFixed(0)}天` : 'N/A'}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">总收益率</span>
+                            <span class="metric-value ${totalReturnPct >= 0 ? 'positive' : 'negative'}">${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">年化收益率</span>
+                            <span class="metric-value ${annualizedReturn >= 0 ? 'positive' : 'negative'}">${annualizedReturn >= 0 ? '+' : ''}${annualizedReturn.toFixed(2)}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">⚖️ 再平衡与风险分析</div>
+                        <div class="metric-row">
+                            <span class="metric-label">再平衡次数</span>
+                            <span class="metric-value">${rebalanceCount}次</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">平均偏离度</span>
+                            <span class="metric-value">${(avgDrift*100).toFixed(2)}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">最大回撤</span>
+                            <span class="metric-value negative">${(maxDrawdown*100).toFixed(2)}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">波动率</span>
+                            <span class="metric-value">${volatility.toFixed(2)}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">夏普比率</span>
+                            <span class="metric-value ${sharpeRatio >= 1 ? 'positive' : sharpeRatio >= 0 ? '' : 'negative'}">${sharpeRatio.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">纪律性评分</span>
+                            <span class="metric-value ${rebalanceCount >= filteredInv.length/3 ? 'positive' : 'negative'}">
+                                ${rebalanceCount >= filteredInv.length/3 ? '优秀' : rebalanceCount >= 1 ? '良好' : '需加强'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">🌍 地域配置分析</div>
+                        <canvas id="regionChart" height="200"></canvas>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <div class="analysis-title">📈 月度投资分布</div>
+                        <canvas id="monthlyChart" height="200"></canvas>
+                    </div>
+                    
+                    <div class="analysis-card" style="grid-column: 1 / -1;">
+                        <div class="analysis-title">📊 持仓资产分布</div>
+                        <canvas id="holdingsChart" height="150"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            // 渲染图表
+            renderRegionChart(filteredInv);
+            renderMonthlyChart(filteredInv);
+            renderHoldingsChart(currentHoldings);
+        }
+        
+        function renderRegionChart(investments) {
+            const canvas = document.getElementById('regionChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            
+            const regionInvest = {US: 0, EU: 0, APAC: 0, CN: 0, OTHER: 0};
+            investments.forEach(inv => {
+                Object.entries(inv.allocations).forEach(([name, alloc]) => {
+                    const amount = typeof alloc === 'object' ? alloc.amount : alloc;
+                    const region = ASSETS[name]?.region || 'OTHER';
+                    regionInvest[region] += amount;
+                });
+            });
+            
+            const regionNames = {US: '美国', EU: '欧洲', APAC: '亚太', CN: '中国', OTHER: '其他'};
+            const regionColors = {US: '#6366f1', EU: '#f43f5e', APAC: '#f59e0b', CN: '#10b981', OTHER: '#64748b'};
+            
+            const labels = [];
+            const data = [];
+            const colors = [];
+            Object.entries(regionInvest).filter(([_,v]) => v > 0).sort((a,b) => b[1]-a[1]).forEach(([region, amount]) => {
+                labels.push(regionNames[region]);
+                data.push(amount);
+                colors.push(regionColors[region]);
+            });
+            
+            const chart = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 12 } } }
+                    }
+                }
+            });
+            analysisChartInstances.push(chart);
+        }
+        
+        function renderMonthlyChart(investments) {
+            const canvas = document.getElementById('monthlyChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            
+            const byMonth = {};
+            investments.forEach(inv => {
+                const d = new Date(inv.timestamp);
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                byMonth[key] = (byMonth[key] || 0) + inv.amount;
+            });
+            
+            const sorted = Object.entries(byMonth).sort((a,b) => a[0].localeCompare(b[0])).slice(-12);
+            const labels = sorted.map(([k]) => {
+                const [y, m] = k.split('-');
+                return `${y}/${m}`;
+            });
+            const data = sorted.map(([_, v]) => v);
+            
+            const chart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '投资金额',
+                        data: data,
+                        backgroundColor: 'rgba(99,102,241,0.6)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                        y: { ticks: { color: '#94a3b8', callback: v => '¥' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(148,163,184,0.1)' } }
+                    }
+                }
+            });
+            analysisChartInstances.push(chart);
+        }
+        
+        function renderHoldingsChart(holdings) {
+            const canvas = document.getElementById('holdingsChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            
+            const entries = Object.entries(holdings).filter(([_,v]) => v > 0).sort((a,b) => b[1] - a[1]);
+            if (entries.length === 0) return;
+            
+            const labels = entries.map(([name]) => name);
+            const data = entries.map(([_, v]) => v);
+            const colors = entries.map(([name]) => ASSETS[name]?.color || '#64748b');
+            
+            const chart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', callback: v => '¥' + v.toFixed(0) }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                        y: { ticks: { color: '#f8fafc', font: { size: 12 } }, grid: { display: false } }
+                    }
+                }
+            });
+            analysisChartInstances.push(chart);
+        }
+        
+        // ==================== 风险指标计算 ====================
+        
+        function calculateVolatility(returns) {
+            if (returns.length < 2) return 0;
+            const mean = returns.reduce((a,b) => a+b, 0) / returns.length;
+            const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (returns.length - 1);
+            return Math.sqrt(variance);
+        }
+        
+        function calculateMaxDrawdown(values) {
+            if (values.length < 2) return 0;
+            let peak = values[0];
+            let maxDD = 0;
+            for (const val of values) {
+                if (val > peak) peak = val;
+                const dd = (peak - val) / peak;
+                if (dd > maxDD) maxDD = dd;
+            }
+            return maxDD;
+        }
+        
+        function calculateSharpeRatio(annualizedReturn, volatility, riskFreeRate = 2) {
+            if (volatility === 0) return 0;
+            return (annualizedReturn - riskFreeRate) / volatility;
         }
 
         // 导出功能
@@ -2624,6 +4192,100 @@
             showNotif('success', '✓ 已导出', '历史记录已导出');
         }
 
+        // ==================== 增强导出功能 ====================
+        
+        // 导出CSV格式
+        function exportToCSV() {
+            if (!allHistoryData || allHistoryData.length === 0) {
+                showNotif('error', '✗ 无数据', '没有可导出的历史记录');
+                return;
+            }
+            
+            let csv = '\uFEFF'; // BOM for Excel
+            csv += '类型,日期,金额/总资产,备注/偏离度,详情\n';
+            
+            allHistoryData.forEach(item => {
+                if (item.type === 'invest') {
+                    const details = Object.entries(item.allocations).map(([name, alloc]) => {
+                        const amount = typeof alloc === 'object' ? alloc.amount : alloc;
+                        return `${name}: ¥${amount.toFixed(2)}`;
+                    }).join('; ');
+                    csv += `投资,${item.date},¥${item.amount.toFixed(2)},${item.note || ''},"${details}"\n`;
+                } else {
+                    const details = item.adjustments.filter(a => a.action !== 'hold').map(a => 
+                        `${a.name}: ${a.action === 'buy' ? '买入' : '卖出'} ¥${Math.abs(a.diff).toFixed(2)}`
+                    ).join('; ');
+                    csv += `再平衡,${item.date},¥${item.totalValue.toFixed(2)},偏离度${(item.maxDrift*100).toFixed(1)}%,"${details}"\n`;
+                }
+            });
+            
+            downloadFile(csv, `portfolio_${getLocalDateString()}.csv`, 'text/csv;charset=utf-8');
+            showNotif('success', '✓ 已导出', 'CSV文件已下载');
+        }
+        
+        // 导出Markdown格式
+        function exportToMarkdown() {
+            if (!allHistoryData || allHistoryData.length === 0) {
+                showNotif('error', '✗ 无数据', '没有可导出的历史记录');
+                return;
+            }
+            
+            let md = '# 投资组合报告\n\n';
+            md += `导出时间: ${new Date().toLocaleString()}\n\n`;
+            
+            // 统计概览
+            const investments = allHistoryData.filter(i => i.type === 'invest');
+            const rebalances = allHistoryData.filter(i => i.type === 'rebalance');
+            const totalInvested = investments.reduce((sum, i) => sum + i.amount, 0);
+            
+            md += '## 概览\n\n';
+            md += `- 累计投资: ¥${totalInvested.toFixed(2)}\n`;
+            md += `- 投资次数: ${investments.length}\n`;
+            md += `- 再平衡次数: ${rebalances.length}\n\n`;
+            
+            // 投资记录
+            md += '## 投资记录\n\n';
+            md += '| 日期 | 金额 | 备注 |\n';
+            md += '|------|------|------|\n';
+            investments.forEach(i => {
+                md += `| ${i.date} | ¥${i.amount.toFixed(2)} | ${i.note || '-'} |\n`;
+            });
+            
+            // 再平衡记录
+            if (rebalances.length > 0) {
+                md += '\n## 再平衡记录\n\n';
+                md += '| 日期 | 总资产 | 偏离度 |\n';
+                md += '|------|--------|--------|\n';
+                rebalances.forEach(r => {
+                    md += `| ${r.date} | ¥${r.totalValue.toFixed(2)} | ${(r.maxDrift*100).toFixed(1)}% |\n`;
+                });
+            }
+            
+            // 当前配置
+            md += '\n## 当前配置\n\n';
+            md += '| 标的 | 权重 |\n';
+            md += '|------|------|\n';
+            Object.entries(currentWeights).filter(([_,w]) => w > 0).forEach(([name, weight]) => {
+                md += `| ${name} (${ASSETS[name]?.code || ''}) | ${(weight*100).toFixed(1)}% |\n`;
+            });
+            
+            downloadFile(md, `portfolio_${getLocalDateString()}.md`, 'text/markdown;charset=utf-8');
+            showNotif('success', '✓ 已导出', 'Markdown报告已下载');
+        }
+        
+        // 通用文件下载函数
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
         function exportSettings() {
             // 分离自定义标的
             const defaultAssetNames = Object.keys(PRESETS.default);
@@ -2814,6 +4476,93 @@
             toggle.classList.toggle('active');
             const isActive = toggle.classList.contains('active');
             showNotif('info', isActive ? '自动备份已开启' : '自动备份已关闭', isActive ? '每次操作后将自动导出数据' : '需要手动备份数据');
+        }
+        
+        // ==================== 密码保护处理 ====================
+        
+        async function handleSetPassword() {
+            const password = document.getElementById('appPassword').value.trim();
+            if (!password) {
+                showNotif('error', '✗ 输入错误', '请输入密码');
+                return;
+            }
+            if (password.length < 4) {
+                showNotif('error', '✗ 密码太短', '密码至少需要4个字符');
+                return;
+            }
+            await setPassword(password);
+            document.getElementById('appPassword').value = '';
+            // 刷新页面以启用密码保护
+            setTimeout(() => location.reload(), 1000);
+        }
+        
+        function handleClearPassword() {
+            if (!needsAuth()) {
+                showNotif('info', 'ℹ 提示', '当前未设置密码');
+                return;
+            }
+            const password = prompt('请输入当前密码以确认清除：');
+            if (password === null) return;
+            verifyPassword(password).then(ok => {
+                if (ok) {
+                    clearPassword();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotif('error', '✗ 密码错误', '请输入正确的密码');
+                }
+            });
+        }
+        
+        // ==================== 审计日志UI ====================
+        
+        async function showAuditLogs() {
+            const logs = await getAuditLogs(50);
+            
+            const modal = document.getElementById('editModal');
+            const title = document.getElementById('editModalTitle');
+            const content = document.getElementById('editModalContent');
+            
+            title.textContent = '📋 操作日志';
+            
+            if (logs.length === 0) {
+                content.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>暂无操作日志</div>';
+            } else {
+                const actionNames = { create: '创建', update: '修改', delete: '删除' };
+                const storeNames = { investments: '投资记录', rebalances: '再平衡记录', drafts: '草稿', schemes: '方案' };
+                
+                content.innerHTML = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${logs.map(log => `
+                            <div style="padding: 12px; background: var(--glass); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span style="font-weight: 600; font-size: 0.875rem;">
+                                        <span style="color: ${log.action === 'delete' ? 'var(--danger)' : log.action === 'update' ? 'var(--warning)' : 'var(--success)'}">
+                                            ${actionNames[log.action] || log.action}
+                                        </span>
+                                        ${storeNames[log.store] || log.store}
+                                    </span>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">
+                                        ${new Date(log.timestamp).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                    ID: ${log.recordId}
+                                    ${log.before ? `<br>变更前: ${JSON.stringify(log.before).substring(0, 80)}...` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            // 修改保存按钮为关闭按钮
+            const saveBtn = modal.querySelector('.btn-primary');
+            if (saveBtn) {
+                saveBtn.textContent = '✓ 关闭';
+                saveBtn.onclick = closeEditModal;
+            }
+            
+            modal.classList.add('active');
         }
 
         // 通知

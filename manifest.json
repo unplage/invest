@@ -1,23 +1,49 @@
 {
-  "name": "投资小助手-资金分配以及再平衡计算助手",
+  "name": "智能资产配置器 - 专业投资组合管理",
   "short_name": "Invest",
-  "description": "资金分配以及再平衡计算助手",
+  "description": "专业级投资组合管理与再平衡工具，支持实时行情、多策略配置、收益分析",
   "start_url": "/invest/",
   "display": "standalone",
-  "background_color": "#f5f5f5", 
-  "theme_color": "#4CAF50",
-  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
   "scope": "/invest/",
+  "lang": "zh-CN",
+  "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%234CAF50' width='192' height='192' rx='20'/%3E%3Ctext x='96' y='120' font-size='80' text-anchor='middle' fill='white'%3EI%3C/text%3E%3C/svg%3E",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%230f172a' width='192' height='192' rx='24'/%3E%3Crect fill='%236366f1' x='24' y='96' width='32' height='72' rx='4'/%3E%3Crect fill='%238b5cf6' x='80' y='56' width='32' height='112' rx='4'/%3E%3Crect fill='%23ec4899' x='136' y='32' width='32' height='136' rx='4'/%3E%3C/svg%3E",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%234CAF50' width='512' height='512' rx='40'/%3E%3Ctext x='256' y='320' font-size='200' text-anchor='middle' fill='white'%3EI%3C/text%3E%3C/svg%3E",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%230f172a' width='512' height='512' rx='64'/%3E%3Crect fill='%236366f1' x='64' y='256' width='85' height='192' rx='8'/%3E%3Crect fill='%238b5cf6' x='214' y='149' width='85' height='299' rx='8'/%3E%3Crect fill='%23ec4899' x='364' y='85' width='85' height='363' rx='8'/%3E%3C/svg%3E",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%230f172a' width='512' height='512' rx='64'/%3E%3Crect fill='%236366f1' x='64' y='256' width='85' height='192' rx='8'/%3E%3Crect fill='%238b5cf6' x='214' y='149' width='85' height='299' rx='8'/%3E%3Crect fill='%23ec4899' x='364' y='85' width='85' height='363' rx='8'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "新增投资",
+      "short_name": "投资",
+      "description": "快速新增一笔投资",
+      "url": "/invest/?action=invest",
+      "icons": [{"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect fill='%236366f1' width='96' height='96' rx='16'/%3E%3Ctext x='48' y='62' font-size='48' text-anchor='middle' fill='white'%3E+%3C/text%3E%3C/svg%3E", "sizes": "96x96"}]
+    },
+    {
+      "name": "再平衡",
+      "short_name": "平衡",
+      "description": "计算再平衡方案",
+      "url": "/invest/?action=rebalance",
+      "icons": [{"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect fill='%23ec4899' width='96' height='96' rx='16'/%3E%3Ctext x='48' y='62' font-size='40' text-anchor='middle' fill='white'%3E%E2%89%A4%3C/text%3E%3C/svg%3E", "sizes": "96x96"}]
     }
   ]
 }
